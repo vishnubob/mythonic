@@ -8,7 +8,7 @@ public:
         _sz(sz), _idx(0)
     {
         _data = (long*)malloc(_sz * sizeof(long));
-        //bzero(_data, _sz * sizeof(long));
+        memset(_data, 0, _sz * sizeof(long));
     }
 
     void push(long val)
@@ -45,12 +45,13 @@ private:
 };
 
 CapSense   cs_4_8 = CapSense(4,8);
-Average    avg_4_8 = Average(10);
 CapSense   cs_4_9 = CapSense(4,9);
-Average    avg_4_9 = Average(10);
 CapSense   cs_4_10 = CapSense(4,10);
-Average    avg_4_10 = Average(10);
 CapSense   cs_4_11 = CapSense(4,11);
+
+Average    avg_4_8 = Average(10);
+Average    avg_4_9 = Average(10);
+Average    avg_4_10 = Average(10);
 Average    avg_4_11 = Average(10);
 
 void sample()
@@ -68,10 +69,43 @@ void setup()
     {
         sample();
     }
-    avg_4_8.set(25);
-    avg_4_9.set(25);
-    avg_4_10.set(25);
-    avg_4_11.set(25);
+    // up
+    Serial.println("up");
+    while(!Serial.available())
+    {
+        sample();
+    }
+    Serial.read();
+    Serial.println(avg_4_8.pull() + 0);
+    avg_4_8.set(0);
+    // down
+    Serial.println("down");
+    while(!Serial.available())
+    {
+        sample();
+    }
+    Serial.read();
+    Serial.println(avg_4_9.pull() + 0);
+    avg_4_9.set(0);
+    // up
+    Serial.println("left");
+    while(!Serial.available())
+    {
+        sample();
+    }
+    Serial.read();
+    Serial.println(avg_4_10.pull() + 0);
+    avg_4_10.set(0);
+    // up
+    Serial.println("right");
+    while(!Serial.available())
+    {
+        sample();
+    }
+    Serial.read();
+    Serial.println(avg_4_11.pull() + 0);
+    avg_4_11.set(0);
+    Serial.println("done");
 }
 
 void loop()
