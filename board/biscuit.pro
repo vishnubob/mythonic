@@ -1,4 +1,4 @@
-update=3/26/2012 1:37:15 AM
+update=3/29/2012 7:16:12 PM
 version=1
 last_client=eeschema
 [cvpcb]
@@ -142,3 +142,4 @@ LibName28=atmel
 LibName29=contrib
 LibName30=valves
 LibName31=Atmega168
+LibName32=shardy
