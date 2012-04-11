@@ -42,6 +42,7 @@ arduino/wiring_analog.c \
 arduino/wiring_digital.c \
 arduino/wiring_pulse.c \
 arduino/wiring_shift.c \
+arduino/EEPROM.c \
 CapSense/CapSense.cpp \
 biscuit.cpp
 
@@ -183,6 +184,14 @@ stats: $(TRG)
 	$(SIZE) $(TRG) 
 
 hex: $(HEXTRG)
+
+upload: hex
+	./arduino_reset.py
+	$(AVRDUDE) -c stk500v1   			\
+	-p $(PROGRAMMER_MCU) -P /dev/ttyUSB0 -D 	\
+	-F \
+	-b 57600	\
+	-U flash:w:$(HEXROMTRG)
 
 
 writeflash: hex
