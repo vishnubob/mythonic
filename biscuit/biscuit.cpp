@@ -210,7 +210,7 @@ Pin             leds[LED_COUNT];
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(57600);
     Serial.print("[");
     
     // priming
@@ -237,6 +237,7 @@ void Prompt(void)
 {
   static long v = 0;
   static unsigned char channel = 0;
+  bool echo_on = true;
 
   //Serial.println((Serial.available() ? "Y" : "N"));
   if (Serial.available()) {
@@ -251,6 +252,18 @@ void Prompt(void)
         break;
       case 'z':
         v = 0;
+        break;
+      case '&':
+        Serial.print("!");
+        echo_on = false;
+        break;
+      case 'W':
+        for (uint8_t idx = 0; idx < LED_COUNT; ++idx)
+        {
+            while (!Serial.available()) {}
+            leds[idx].set(Serial.read());
+        }
+        echo_on = false;
         break;
       case 's':
         leds[channel].set(v);
@@ -343,14 +356,17 @@ void Prompt(void)
         Serial.print("Unknown command: ");
         Serial.println(ch, DEC);
     }
-    Serial.println("");
-    Serial.print("Value: ");
-    Serial.print(v, DEC);
-    Serial.print(" - Channel: ");
-    Serial.print(channel, DEC);
-    Serial.print(" - millis: ");
-    Serial.println(millis(), DEC);
-    Serial.print("> ");
+    if (echo_on)
+    {
+        Serial.println("");
+        Serial.print("Value: ");
+        Serial.print(v, DEC);
+        Serial.print(" - Channel: ");
+        Serial.print(channel, DEC);
+        Serial.print(" - millis: ");
+        Serial.println(millis(), DEC);
+        Serial.print("> ");
+    }
   }
 }
 #endif // PROMPT_ENABLE
