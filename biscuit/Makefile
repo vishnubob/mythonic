@@ -188,7 +188,7 @@ hex: $(HEXTRG)
 upload: hex
 	./arduino_reset.py
 	$(AVRDUDE) -c arduino   			\
-	-p $(PROGRAMMER_MCU) -P /dev/ttyUSB0 -D 	\
+	-p m328p  -P /dev/ttyUSB0 -D 	\
 	-F \
 	-i 1 \
 	-b 57600	\
