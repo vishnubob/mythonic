@@ -1,6 +1,6 @@
-update=4/5/2012 2:30:57 AM
+update=4/12/2012 3:12:30 PM
 version=1
-last_client=kicad
+last_client=pcbnew
 [eeschema]
 version=1
 LibDir=library
@@ -65,6 +65,13 @@ LibName29=contrib
 LibName30=valves
 LibName31=Atmega168
 LibName32=shardy
+[cvpcb]
+version=1
+NetIExt=net
+[cvpcb/libraries]
+EquName1=devcms
+[general]
+version=1
 [pcbnew]
 version=1
 PadDrlX=1200
@@ -83,6 +90,7 @@ TxtLar=120
 MSegLar=150
 LastNetListRead=biscuit.net
 [pcbnew/libraries]
+LibDir=library
 LibName1=sockets
 LibName2=connect
 LibName3=discret
@@ -102,11 +110,4 @@ LibName16=shardy
 LibName17=TO220-3L
 LibName18=TO220_V3L
 LibName19=TO220_VMF
-LibDir=library
-[cvpcb]
-version=1
-NetIExt=net
-[cvpcb/libraries]
-EquName1=devcms
-[general]
-version=1
+LibName20=firefly

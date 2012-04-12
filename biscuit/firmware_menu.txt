@@ -1,0 +1,33 @@
+Biscuit Firmware Menu (v1.0)
+----------------------------
+
+Any number you type is stored as an input.  As you type more numbers, they are
+added in-place using base 10.  If you wish to zero out the current number stored,
+simply hit the (z)ero key.  Many commands take a value, like (s)et.  Once the
+value is copied to a setting, the current value is automatically zeroed out.
+
+After each key press, you will see a the current value, the current channel and
+the current runtime in milliseconds.
+
+0-9 - enter a value 0-9, acculmative
+'-' - convert the value to a negative number
+'s' - (s)et the current channel with the current value
+'C' - set the current (C)hannel with the current value
+'o' - set the first p(o)int in the current channel's ramp with the current value
+'O' - set the second p(O)int in the current channel's ramp with the current value
+'T' - set the (T)ime-to-live (ttl) for the ramp (ramp length) with the current value
+'d' - set a startup (d)elay on the current channel's ramp (allows offset) with the current value
+'E' - (E)nable the current channel's ramp
+'e' - disabl(e) the current channel's ramp
+'f' - disable (f)lip on the current channel's ramp
+'F' - enable (F)lip on the current channel's ramp
+'l' - disable (l)oop on the current channel's ramp
+'L' - enable (L)oop on the current channel's ramp
+'g' - Enable all the ramps at the same time ie. (g)o
+'x' - Disable all the ramps and turn off all the channels
+'p' - (p)rint the current status
+
+---- Used by the API
+'&' - Sync input, allows you to verify you are at the top level menu
+'W' - (W)rite out six channels of values
+
