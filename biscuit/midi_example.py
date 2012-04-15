@@ -50,7 +50,7 @@ class Box(object):
 
         self.lights[light] = value
 
-    def next_packet(self):
+    def packet(self):
         #print repr(self.lights)
         return 'W' + str.join('', map(chr, self.lights))
 
@@ -65,14 +65,14 @@ class LightServer(object):
             self.boxes.append(Box())
 
     def push_update(self):
-        packets = [box.next_packet() for box in self.boxes]
+        packets = [box.packet() for box in self.boxes]
 
         for ch in str.join('', packets):
             self.biscuit.write(ch)
 
     def set_light_intensity(self, light, intensity):
         box_index = int(math.floor(light / 5.0))
-        box_light = light - (box_index * 5)
+        box_light  = light - (box_index * 5)
 
         max_box_index = len(self.boxes) - 1
         if box_index > max_box_index:
@@ -83,7 +83,7 @@ class LightServer(object):
         box.set_light_intensity(box_light, intensity)
 
     def handle(self, event):
-        print repr(event)
+        #print repr(event)
 
         if isinstance(event, midi.NoteOnEvent):
             self.set_light_intensity(event.pitch, event.velocity)
