@@ -54,7 +54,7 @@ class Stage(object):
         packet  = self.bus.read(6)
         command = packet[0]
         box     = self.boxes[int(packet[1])]
-        v1, v2, v3, v4 = map(int, packet[0:5])
+        v1, v2, v3, v4 = map(int, packet[2:5])
 
         if command == "T":
             box.last_touched = time_code
