@@ -3,8 +3,6 @@
 import sys
 import time
 import serial
-import midi
-import midi.sequencer
 
 def main():
 
@@ -19,13 +17,61 @@ def main():
     bus = serial.Serial(tty)
     storyboard = WiredStoryboard(bus, [WiredPictureFrame(i) for i in range(7)])
 
-    metranome = Metranome(120)
+    metranome = Metranome(60)
+    schedular = EffectScheduler(metranome.time)
 
-    while True:
+    frame = storyboard[0]
+    for t in range(1, 9, 3):
+        schedular.fade(frame.increase_blue, 3, 2, t)
+        schedular.fade(frame.decrease_blue, 2, 1, t + 2)
+
+    beat = None
+    while beat < 10:
+        total_run = schedular.run_due(1)
+        if total_run > 0: print frame.blue
         beat = metranome.next_beat()
         if beat is not None:
-            print beat
+            print "==== " + str(beat) + " ====="
+           
+class Scheduler(object):
+    def __init__(self, time_f):
+        self._now   = time_f
+        self._sched = {}
 
+    def schedule(self, f, time):
+        sched = self._sched
+        if time not in sched:
+            sched[time] = []
+        sched[time].append(f)
+
+    def run_due(self, n):
+        now   = self._now()
+        sched = self._sched
+
+        total_run = 0
+
+        if len(sched.keys()) == 0:
+            return total_run
+
+        for i in range(n):
+            soonest = min(sched.keys())
+
+            if soonest <= now:
+                f = sched[soonest].pop()
+                f()
+                total_run = total_run + 1
+                if len(sched[soonest]) == 0:
+                    del sched[soonest]
+
+        return total_run
+
+class EffectScheduler(Scheduler):
+    def fade(self, f, amount, duration, start):
+        print "fade(f, {0}, {1}, {2}):".format(amount, duration, start)
+        t = start
+        for i in range(amount):
+           self.schedule(f, t)
+           t = t + duration/float(amount)
 
 class Metranome(object):
 
@@ -33,31 +79,45 @@ class Metranome(object):
         self.bpm = bpm
         self.last_beat_at = None
         self.current_beat = None
+        self.start_time   = time.time()
 
     def get_seconds_per_beat(self):
         return self.bpm / 60.0
 
     seconds_per_beat = property(get_seconds_per_beat)
 
-    def _increment_beat(self, now):
+    def _increment_beat(self):
+        now = time.time()
+        
         if self.current_beat is None:
             self.current_beat = 1
         else:
             self.current_beat = self.current_beat + 1
 
         self.last_beat_at = now
-
+ 
         return self.current_beat
 
+    def start(self):
+        self.next_beat()
+    
+    # Time in beats, but not greater than current beat. No more than 5 decimal place precision
+    def time(self):
+        if self.current_beat is None:
+            return None
+
+        ungated_time = (((time.time() - self.last_beat_at) * 60) / float(self.bpm)) + self.current_beat
+
+        # XXX: don't exceed counted beats
+        return min(ungated_time, self.current_beat + 0.99999)
+
+    def can_increment(self):
+        return self.last_beat_at is None or time.time() - self.last_beat_at >= self.seconds_per_beat
+
     def next_beat(self):
-        now = time.time()
+        if self.can_increment():
+            return self._increment_beat()
 
-        if self.last_beat_at is None:
-            return self._increment_beat(now)
-
-        if now - self.last_beat_at >= self.seconds_per_beat:
-            return self._increment_beat(now)
-            
         return None
 
 class PictureFrame(object):
@@ -65,15 +125,42 @@ class PictureFrame(object):
 
     __slots__ = ["red", "green", "blue", "uv", "white"]
 
-    def __init__(self, address):
-        self.address = address
-        self.last_touched = None
+    MAX_INTENSITY = 255
+    MIN_INTENSITY = 0
+
+    def __init__(self):
+        self.red   = 0
+        self.green = 0
+        self.blue  = 0
+        self.uv    = 0
+        self.white = 0
+
+    def increase_blue(self, intensity=1, ceiling=MAX_INTENSITY):
+        "Increase the intensity of blue by the given intensity"
+        result = self.blue + intensity
+        if result > ceiling:
+            self.blue = ceiling
+            return False
+        self.blue = result
+        return True
+
+    def decrease_blue(self, intensity=1, floor=MIN_INTENSITY):
+        "Decrease the intensity of blue by the given intensity"
+        result = self.blue - intensity
+        if result < floor:
+            self.blue = floor
+            return False
+        self.blue = result
+        return True
 
 class WiredPictureFrame(PictureFrame):
     "A picture frame with support for our protocol"
 
+    __slots__ = ["address"]
+
     def __init__(self, address):
         self.address = address
+        super(WiredPictureFrame, self).__init__()
     
     def lights_by_channel(self):
         "light intensities ordered by their corresponding channels on board"
@@ -109,7 +196,6 @@ class WiredStoryboard(Storyboard):
         v1, v2, v3, v4 = map(int, packet[2:5])
 
         if command == "T":
-            picture_frame.last_touched = time_code
             return Touch(picture_frame, v1, v2, v3, v4)
 
         return None
