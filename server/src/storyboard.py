@@ -55,6 +55,7 @@ class Story(object):
         "Returns whether interaction should terminate and reset"
         return False
 
+# TODO: Implement interaction based timeouts
 class InteractiveStory(Story):
     "A story the audiance can interact with"
 
@@ -67,12 +68,12 @@ class InteractiveStory(Story):
         self.interactions = []
 
     def interact(self, interaction):
-        "Receive the participant's interaction. Return list of Spectacle"
+        "Receive the participant's interaction and records it"
         self.interactions.append(interaction)
         self._handle_interaction(interaction)
 
     def _handle_interaction(self, interaction):
-        "Respond to interaction"
+        "handle interaction"
 
 class TriggeredStory(InteractiveStory):
     "A story tarts once it has been triggered by certain interaction"
