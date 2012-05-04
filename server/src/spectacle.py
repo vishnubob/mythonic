@@ -2,7 +2,7 @@ from schedule import Schedule
 
 
 class Spectacle(list):
-    "Something spectacular, relayed via a timed sequence of function calls"
+    "Something spectacular, represented by a list of time code and function call tuples"
 
 class Repeat(Spectacle):
     "Repeat at even intravals based on duration and reps"
