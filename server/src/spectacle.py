@@ -7,8 +7,6 @@ class Spectacle(list):
 class Repeat(Spectacle):
     "Repeat at even intravals based on duration and reps"
 
-    __slots__ = ["duration", "repetitions", "display_func"]
-
     def __init__(self, display_func, duration, repetitions):
         "Inserts tuples of time offsets and function calls"
         plan = []
