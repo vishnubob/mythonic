@@ -31,17 +31,21 @@ class MythonicStoryboard(WiredStoryboard):
         interaction = self.read_event(time_code)
 
         stories_to_update = []
-        if self.tilt_mode.is_running:
-            stories_to_update = [self.tilt_mode]
+        # If either of these are active, we want only them to run
+        if self.tilt_mode.is_running or self.screensaver.is_running:
+            stories_to_update = [self.tilt_mode, self.screensaver]
         else:
             stories_to_update = list(self)
 
+        something_ran = False
         for story in stories_to_update:
             if interaction is not None:
                 story.interact(interaction, time_code)
-            story.advance_plot(time_code)
+            something_ran = story.advance_plot(time_code) or something_ran
 
-        self.refresh_lighting()
+        # shitty way of deciding this
+        if something_ran: 
+            self.refresh()
 
 class MythonicPictureFrame(WiredPictureFrame):
     "Mythonic picture frame"
