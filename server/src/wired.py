@@ -10,6 +10,9 @@ class WiredStoryboard(Storyboard):
         self.bus = bus
         super(WiredStoryboard, self).__init__(frames)
 
+    def refresh(self):
+        self.refresh_lighting()
+
     def refresh_lighting(self):
         "Update lighting based on state of picture frames"
         packets = [frame.packet() for frame in self.picture_frames]
