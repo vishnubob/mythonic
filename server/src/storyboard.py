@@ -1,4 +1,5 @@
 from schedule import Schedule
+import itertools
 
 class Story(object):
     "An experience we want to communicate to participants through picture frames and sound"
