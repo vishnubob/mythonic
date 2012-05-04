@@ -4,7 +4,7 @@ from pictureframe import PictureFrame
 from storyboard   import Storyboard
 
 class WiredStoryboard(Storyboard):
-    "A series of MAGICAL picture frames"
+    "A storyboard with the electronic interface we designed"
 
     def __init__(self, bus, frames):
         self.bus = bus
