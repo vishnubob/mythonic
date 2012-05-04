@@ -1,5 +1,6 @@
 #include "arduino/Arduino.h"
 #include "arduino/EEPROM.h"
+#include "CapSense/CapSense.h"
 #include <math.h>
 #include <util/delay.h>
 #include <avr/wdt.h> 
@@ -7,10 +8,11 @@
 #define GRN PD4
 #define RED PD2
 
-#define TIMING_ADDR         0
-#define SEED_ADDR           (TIMING_ADDR + (2 * sizeof(int) * LED_COUNT))
+#define BOARD_ADDR          0
 #define PROMPT_ENABLE       1
 #define LED_COUNT           6
+#define DE485_PIN           7
+#define RE485_PIN           A5
 
 // Helper macros for frobbing bits
 #define bitset(var,bitno) ((var) |= (1 << (bitno)))
@@ -22,6 +24,16 @@ const int _led_map[] = {9, 10, 11, 3, 5, 6};
 /******************************************************************************
  ** EEPROM reads / writer helper functions
  ******************************************************************************/
+
+uint8_t read_byte(int &addr)
+{
+    return (uint8_t)EEPROM.read(addr++);
+}
+
+void write_byte(int &addr, uint8_t value)
+{
+    EEPROM.write(addr++, value);
+}
 
 int read_int(int &addr)
 {
@@ -56,23 +68,26 @@ void write_long(int &addr, long value)
     EEPROM.write(addr++, ((value >> 24) & 0xFF));
 }
 
-unsigned long sync_random_seed()
+
+void enable_serial_output()
 {
-    unsigned long seed;
-    int addr;
-    addr = SEED_ADDR;
-    seed = static_cast<unsigned long>(read_long(addr));
-    for(int pinidx = 0; pinidx < 6; ++pinidx)
-    {
-        seed <<= 3;
-        seed ^= analogRead(pinidx);
-    }
-    addr = SEED_ADDR;
-    write_long(addr, static_cast<long>(seed));
-    randomSeed(seed);
-    return seed;
+    // turn off receiver
+    digitalWrite(RE485_PIN, HIGH);
+    // turn on transmitter
+    digitalWrite(DE485_PIN, HIGH);
+    digitalWrite(GRN, HIGH);
 }
 
+void disable_serial_output()
+{
+    Serial.flush();
+    delay(5);
+    // turn off transmitter
+    digitalWrite(DE485_PIN, LOW);
+    // turn on receiver
+    digitalWrite(RE485_PIN, LOW);
+    digitalWrite(GRN, LOW);
+}
 
 /******************************************************************************
  ** Pin
@@ -203,6 +218,7 @@ private:
 
 Ramp            ramps[LED_COUNT];
 Pin             leds[LED_COUNT];
+uint8_t         board_addr;
 
 /******************************************************************************
  ** Setup
@@ -210,23 +226,99 @@ Pin             leds[LED_COUNT];
 
 void setup()
 {
-    Serial.begin(57600);
+    // pins
+    Serial.begin(115200);
+    pinMode(GRN, OUTPUT);
+    pinMode(RED, OUTPUT);
+    pinMode(DE485_PIN, OUTPUT);
+    pinMode(RE485_PIN, OUTPUT);
+    enable_serial_output();
     Serial.print("[");
     
     // priming
-    Serial.print("init ...");
+    Serial.print("init C ...");
     Serial.println("]");
-    Serial.flush();
 
-    // init
-    Serial.println("init done!");
+    /*
+    int addr = BOARD_ADDR;
+    board_addr = read_byte(addr);
+    */
 
+    /*
     for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
     {
         leds[ch].init(_led_map[ch]);
     }
+    */
+    
+    // blink the LED
+    Serial.println("init done!");
+    delay(500);
+    disable_serial_output();
 }
 
+/* touch */
+
+class Average
+{
+public:
+    Average(uint8_t sz) :
+        _sz(sz), _idx(0)
+    {
+        _data = (long*)malloc(_sz * sizeof(long));
+        memset(_data, 0, _sz * sizeof(long));
+    }
+
+    void push(long val)
+    {
+        _data[_idx] = val;
+        _idx = (_idx + 1) % _sz;
+    }
+
+    long pull()
+    {
+        long sum = 0;
+        for(uint8_t sum_idx = 0; sum_idx < _sz; ++sum_idx)
+        {
+            sum += _data[sum_idx];
+        }
+        return (sum / ((float)_sz));
+    }
+
+    void set(uint8_t offset)
+    {
+        _level = pull() + offset;
+    }
+
+    bool trigger()
+    {
+        return (pull() > _level);
+    }
+
+private:
+    uint8_t _sz;
+    uint8_t _idx;
+    long* _data;
+    long _level;
+};
+
+CapSense   tch1 = CapSense(A0, A1);
+CapSense   tch2 = CapSense(A0, A2);
+CapSense   tch3 = CapSense(A0, A3);
+CapSense   tch4 = CapSense(A0, A4);
+
+Average    avg_tch1 = Average(10);
+Average    avg_tch2 = Average(10);
+Average    avg_tch3 = Average(10);
+Average    avg_tch4 = Average(10);
+
+void sample()
+{
+    avg_tch1.push(tch1.capSense(50));
+    avg_tch2.push(tch2.capSense(50));
+    avg_tch3.push(tch3.capSense(50));
+    avg_tch4.push(tch4.capSense(50));
+}
 
 /******************************************************************************
  ** Serial
@@ -240,7 +332,24 @@ void Prompt(void)
   bool echo_on = true;
 
   //Serial.println((Serial.available() ? "Y" : "N"));
-  if (Serial.available()) {
+  if (Serial.available()) 
+  {
+    char ch = Serial.read();
+    if (ch == 'a')
+    {
+        digitalWrite(RED, HIGH);
+    } else
+    if (ch == 'b')
+    {
+        digitalWrite(RED, LOW);
+    }
+    enable_serial_output();
+    Serial.println(ch, DEC);
+    disable_serial_output();
+  }
+
+  if(0)
+  {
     char ch = Serial.read();
 
     switch(ch) {
@@ -351,6 +460,16 @@ void Prompt(void)
             Serial.print(": ");
             ramps[idx].print();
         }
+        Serial.print("TCH1: ");
+        Serial.print(tch1.capSense(50), DEC);
+        Serial.print(" TCH2: ");
+        Serial.print(tch2.capSense(50), DEC);
+        Serial.print(" TCH3: ");
+        Serial.print(tch3.capSense(50), DEC);
+        Serial.print(" TCH4: ");
+        Serial.print(tch4.capSense(50), DEC);
+        Serial.println("");
+
         break;
       default:
         Serial.print("Unknown command: ");
@@ -367,6 +486,7 @@ void Prompt(void)
         Serial.println(millis(), DEC);
         Serial.print("> ");
     }
+  disable_serial_output();
   }
 }
 #endif // PROMPT_ENABLE
@@ -374,14 +494,26 @@ void Prompt(void)
 /******************************************************************************
  ** Main loop
  ******************************************************************************/
-
 void loop()
 {
-    // enable the watchdog timer, 8 seconds
-    wdt_enable(WDTO_8S);
+
+    /*
+    for(int x=0; x < 6; ++x)
+    {
+        ramps[x].set_flip(true);
+        ramps[x].set_loop(true);
+        ramps[x].set_pt2(0xff);
+        ramps[x].set_ttl(1000);
+        ramps[x].set_delay(x * 1000);
+        ramps[x].enable();
+    }
+    */
+
+    //wdt_enable(WDTO_8S);
     for(;;)
     {
-        wdt_reset();
+        //wdt_reset();
+        /*
         for (uint8_t ch = 0; ch < LED_COUNT; ++ch)
         {
             if (ramps[ch].is_enabled())
@@ -389,7 +521,8 @@ void loop()
                 leds[ch].set(ramps[ch].step());
             }
         }
-        wdt_reset();
+        */
+        //wdt_reset();
 #if PROMPT_ENABLE
         Prompt();
 #endif // PROMPT_ENABLE
