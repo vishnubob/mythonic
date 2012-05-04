@@ -71,7 +71,6 @@ class Screensaver(MythonicStory):
         super(Screensaver, self).__init__(picture_frames)
 
         self.timeout = timeout
-        self.progress = None
 
     def _should_start(self, time_code):
         if len(self.interactions) <= 0:
