@@ -74,7 +74,7 @@ class PictureFrame(object):
         return self._blue;
     def set_blue(self, intensity):
         if intensity > self.MAX_BLUE or intensity < self.MIN_BLUE:
-            raise ValueError("Exceeds maximum blue intensity")
+            raise ValueError(str(intensity) + "exceeds maximum blue intensity")
         self._blue = intensity
     blue = property(get_blue, set_blue)
 
@@ -150,6 +150,13 @@ class PictureFrame(object):
             return False
         set_light(intensity)
         return True
+
+    def blackout(self):
+        self.set_red(MIN_RED)
+        self.set_green(MIN_GREEN)
+        self.set_blue(MIN_BLUE)
+        self.set_uv(MIN_UV)
+        self.set_white(MIN_WHITE)
 
 #
 # Spectacle specific to picture frames

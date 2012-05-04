@@ -5,7 +5,7 @@ class Schedule(object):
         self.initial_insertion_point = initial_insertion_point
 
     def get_insertion_point(self):
-        "Time when append will schedule events"
+        "When append will schedule events"
         if len(self._entries.keys()) > 0:
             return max(self._entries.keys())
         else:
@@ -13,13 +13,13 @@ class Schedule(object):
     insertion_point = property(get_insertion_point)
 
     def schedule(self, f, when):
+        print "schedule(self, {0} {1})".format(f, when)
         entries = self._entries
         if when not in entries:
             entries[when] = []
         entries[when].append(f)
 
     def append(self, f, offset=0):
-        print "Offset: " + str(offset)
         entries = self._entries
         self.schedule(f, self.insertion_point + offset)
 
