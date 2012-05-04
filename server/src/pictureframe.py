@@ -5,7 +5,7 @@ class Interaction(object):
 
     __slots__ = ["picture_frame", "time_code"]
 
-    def __init__(self, picture_frame, time_code):
+    def __init__(self, picture_frame, time_code=None):
         self.picture_frame = origin
         self.time_code     = time_code
 
@@ -14,7 +14,7 @@ class Touch(Interaction):
 
     __slots__ = ["up", "down", "left", "right"]
 
-    def __init__(self, picture_frame, time_code, up, down, left, right):
+    def __init__(self, picture_frame, up, down, left, right, time_code=None):
         super(Touch, self).__init__(picture_frame, time_code)
 
         self.up    = up
