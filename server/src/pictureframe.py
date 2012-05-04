@@ -165,5 +165,6 @@ class PictureFrame(object):
 class FadeBlack(Repeat):
     def __init__(self, picture_frame, duration):
         p = picture_frame
+        # XXX: BROKEN. These are the values at the time of creating the spectacle not running it. 
         brightest = max(p.red, p.green, p.blue, p.uv, p.white)
         super(FadeBlack, self).__init__(p.decrease_all, brightest, duration)
