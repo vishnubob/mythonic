@@ -1,5 +1,4 @@
 from schedule import Schedule
-import itertools
 
 class Story(object):
     "An experience we want to communicate to participants through picture frames and sound"
@@ -26,7 +25,7 @@ class Story(object):
         "Reset state"
 
     def advance_plot(self, time_code):
-        "Advance this story if needed. Return True only if something ran."
+        "Advance this story if needed. Time code can (and sometimes should) be fractional"
         if not self.is_running:
             if self._should_start(time_code):
                 self.start(time_code)
@@ -38,7 +37,6 @@ class Story(object):
 
         offset = time_code - self.last_started
         for f in self._schedule.pop_due(1, offset):
-            print "Executing " + str(f)
             f()
 
     def _make_schedule(self, time_offset):
