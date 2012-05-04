@@ -13,7 +13,7 @@ class Schedule(object):
     insertion_point = property(get_insertion_point)
 
     def schedule(self, f, when):
-        print "schedule(self, {0} {1})".format(f, when)
+        #print "schedule(self, {0} {1})".format(f, when)
         entries = self._entries
         if when not in entries:
             entries[when] = []
