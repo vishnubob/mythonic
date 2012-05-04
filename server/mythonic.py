@@ -13,52 +13,71 @@ def main():
         print "Example: {0} 129 128:0 /dev/ttyUSB0".format(sys.argv[0])
         exit(2)
 
-    script_name, light_client, music_client_port, tty = sys.argv
+    script_name, control_client, music_client_port, tty = sys.argv
     music_client, music_port = map(int, music_client_port.split(":"))
     
-    # The personal running the show
+    # The personale running the show
     music_conductor = MusicConductor(music_client, music_port)
     light_conductor = LightConductor(light_client)
     director        = Director([music_conductor, light_conductor])
 
-    # Create a stage with one box
+    # Create a stage with one picture_frame
     stage = Stage(tty, 1)
 
     # Start the mainloop. Time codes are worth 1/4th a second
     director.direct(stage, 0.25)
 
-class Stage(object):
-    "contains state information regarding the boxes and provides communication"
+class PictureFrame(object):
+    "A picture frame with lighting"
 
-    def __init__(self, bus, box_count):
-        self.bus = serial.Serial(bus)
-        self.boxes = [Box(i) for i in range(box_count)]
+    __slots__ = ["red", "green", "blue", "uv", "white"]
 
-    def refresh(self):
-        self.refresh_lighting()
+    def __init__(self):
+        self.address = address
+        self.last_touched = None
+
+class WiredPictureFrame(PictureFrame):
+    "A picture frame with support for our protocol"
+
+    def __init__(self, address):
+        self.address = address
+    
+    def lights_by_channel(self):
+        "light intensities ordered by their corresponding channels on board"
+        [self.red, self.green, self.blue, self.uv, self.white]
+
+    def packet(self):
+        return 'W' + str.join('', map(chr, [self.address] + self.lights_by_channel()))
+
+class Storyboard(list):
+    "A series of picture frames"
+
+class WiredStoryboard(Storyboard):
+    "A series of MAGICAL picture frames"
+
+    def __init__(self, bus, frames):
+        self.bus = bus
+        super(WiredStoryboard, self).__init__(frames)
 
     def refresh_lighting(self):
-        "Look at the lighting values of each box and send update accordingly"
-        packets = []
-        for i, box in enumerate(self.boxes):
-            packets.append('W' + str.join('', map(chr, [i] + box.lights)))
-
+        "Look at the lighting values of each picture_frame and send update accordingly"
+        packets = [frame.packet() for frame in self.picture_frames]
         for ch in str.join('', packets):
             self.bus.write(ch)
 
-    def next_feedback(self, time_code):
-        "Process the next command should it exist."
+    def receive_feedback(self, time_code):
+        ""
         if self.bus.inWaiting() < 6:
             return None
 
         packet  = self.bus.read(6)
         command = packet[0]
-        box     = self.boxes[int(packet[1])]
+        picture_frame = self.picture_frames[int(packet[1])]
         v1, v2, v3, v4 = map(int, packet[2:5])
 
         if command == "T":
-            box.last_touched = time_code
-            return Touch(box, v1, v2, v3, v4)
+            picture_frame.last_touched = time_code
+            return Touch(picture_frame, v1, v2, v3, v4)
 
         return None
 
@@ -66,23 +85,16 @@ class Feedback(object):
     "Feedback from our audiance/stage"
 
 class Touch(Feedback):
-    "Represents one of our boxes being touched"
+    "Represents one of our picture_frames being touched"
 
-    __slots__ = ["box", "up", "down", "left", "right"]
+    __slots__ = ["picture_frame", "up", "down", "left", "right"]
 
-    def __init__(self, box, up, down, left, right):
-        self.box   = box
+    def __init__(self, picture_frame, up, down, left, right):
+        self.picture_frame = picture_frame
         self.up    = up
         self.down  = down
         self.left  = left
         self.right = right
-
-class Box(object):
-    __slots__ = ["address", "last_touched"]
-
-    def __init__(self, address):
-        self.address = address
-        self.last_touched = None
 
 class Director(object):
 
@@ -106,11 +118,11 @@ class Director(object):
 
 class Conductor(object):
 
-    def react(self, stage, time_code, feedback):
+    def react(self, stage, feedback):
         "based on feedback, conduct the minions"
 
     def conduct(self, stage, time_code):
-        "conduct the minions in away appropriate to the timecode"
+        "conduct the minions in a way appropriate to the timecode"
 
 class MusicConductor(Conductor):
     
@@ -120,7 +132,7 @@ class MusicConductor(Conductor):
         seq.start_sequencer()
         self._music_seq = seq
 
-    def conduct(self, stage, time_code):
+    def conduct(self, stage, time_code, time_change):
         "sends scheduled music to our synth"
 
     def react(self, stage, time_code, feedback):
@@ -133,7 +145,7 @@ class LightConductor(Conductor):
         self._light_handle  = light_handle
 
     def conduct(self, stage, time_code):
-        "updates the lighting values of our boxes then refreshes."
+        "updates the lighting values of our picture_frames then refreshes."
         stage.refresh_lighting()
 
     def react(self, stage, time_code, feedback):
