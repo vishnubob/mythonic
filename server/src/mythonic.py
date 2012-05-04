@@ -14,17 +14,17 @@ class MythonicStoryboard(WiredStoryboard):
 
         # Kick in screen saver after 3 time codes of silence
         self.screensaver    = Screensaver(picture_frames, 3)
-#        # Kick in tilt based on rolling average of 10 interactions
-        self.tilt_mode      = Tilt(picture_frames, 10, 10)
+        # Kick in tilt based on rolling average of 10 interactions
+#        self.tilt_mode      = Tilt(picture_frames, 10, 10)
 #        # Yay!
 #        self.pictured_story = OctopusAndBuilder(picture_frames)
-#        # Instrument mode
-#        self.instrument     = Instrument(picture_frames)
+        # Instrument mode
+        self.instrument     = Instrument(picture_frames)
 #
         self.append(self.screensaver)
-        self.append(self.tilt_mode)
+#        self.append(self.tilt_mode)
 #        self.append(self.pictured_story)
-#        self.append(self.instrument)
+        self.append(self.instrument)
 #
     def update(self, time_code):
         "Update stories and board based on given time_code"
@@ -32,8 +32,10 @@ class MythonicStoryboard(WiredStoryboard):
 
         stories_to_update = []
         # If either of these are active, we want only them to run
-        if self.tilt_mode.is_running or self.screensaver.is_running:
-            stories_to_update = [self.tilt_mode, self.screensaver]
+#        if self.tilt_mode.is_running or self.screensaver.is_running:
+#           stories_to_update = [self.tilt_mode, self.screensaver]
+        if self.screensaver.is_running:
+            stories_to_update = [self.screensaver]
         else:
             stories_to_update = list(self)
 
@@ -53,20 +55,40 @@ class MythonicPictureFrame(WiredPictureFrame):
 class MythonicStory(InteractiveStory):
     "An exciting story from the good folks at Mythonic UnLtd."
 
-class OctopusAndBuilder(MythonicStory):
-    "Interactive story on our pictures"
+#class OctopusAndBuilder(MythonicStory):
+#    "Interactive story on our pictures"
 
 class Instrument(MythonicStory):
     "Allows the user to define the stories themself"
 
-class Tilt(MythonicStory):
-    "Tilt mode. When input rate spikes, freak out and go silent."
+    def _should_start(self, time_code):
+        return len(self.interactions) > 0
 
-    def __init__(self, picture_frames, threshold, sample_size):
-        "Threshold is in interactions per whole time code."
-        super(Tilt, self).__init__(picture_frames)
-        self.threshold = threshold
-        self.sample_size = sample_size
+    def _handle_interaction(self, interaction):
+        "Adjusts lights based on Touch inputs"
+        sched = self._schedule
+
+        if not isinstance(interaction, Touch):
+            return
+        touch = interaction
+        frame = touch.picture_frame
+        
+        # Schedule changes to happen immediately
+        sched.schedule(lambda : frame.set_blue(touch.up), 0)
+        sched.schedule(lambda : frame.set_green(touch.left), 0)
+        sched.schedule(lambda : frame.set_red(touch.down), 0)
+        sched.schedule(lambda : frame.set_uv(touch.right), 0)
+
+#class Tilt(MythonicStory):
+#    "Tilt mode. When input rate spikes, freak out and go silent."
+#
+#    def __init__(self, picture_frames, threshold, sample_size, timeout):
+#        "Threshold is in interactions per whole time code."
+#        super(Tilt, self).__init__(picture_frames)
+#        self.threshold = threshold
+#        self.sample_size = sample_size
+#        self.timeout = timeout
+#
 
 class Screensaver(MythonicStory):
     "Free running animation to attract people. Interaction stops."
