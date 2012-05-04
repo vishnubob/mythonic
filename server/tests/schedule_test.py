@@ -1,7 +1,8 @@
 import unittest
 from schedule import Schedule
 
-class TestXXX(unittest.TestCase):
+class TestSchedule(unittest.TestCase):
+
     def test_schedule(self):
         s = Schedule()
         s.schedule(lambda : None, 1)
