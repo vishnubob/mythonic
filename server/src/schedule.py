@@ -39,17 +39,3 @@ class Schedule(object):
                     del entries[soonest]
 
         return due
-
-class Scheduler(Schedule):
-
-    def __init__(self, time_f):
-        self._now   = time_f
-
-    def run_due(self, n):
-        now = self._now()
-        due = self.pop_due(n, now)
-
-        for f in due:
-            f()
-
-        return len(due)
