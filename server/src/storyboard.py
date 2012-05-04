@@ -26,7 +26,7 @@ class Story(object):
         "Reset state"
 
     def advance_plot(self, time_code):
-        "Advance this story if needed. Time code can (and sometimes should) be fractional"
+        "Advance this story if needed. Returns True if so. Time code can (and sometimes should) be fractional"
         if not self.is_running:
             if self._should_start(time_code):
                 self.start(time_code)
@@ -36,9 +36,12 @@ class Story(object):
         if self._should_stop(time_code):
             return self.stop(time_code)
 
+        something_ran = False
         offset = time_code - self.last_started
         for f in self._schedule.pop_due(1, offset):
+            something_ran = True
             f()
+        return something_ran
 
     def _make_schedule(self, time_offset):
         "create a schedule based off of offset"
