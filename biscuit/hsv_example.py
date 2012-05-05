@@ -26,7 +26,7 @@ while 1:
         print map(ord, packet)
         for ch in packet:
             biscuit.write(ch)
-        time.sleep(.0001)
+        time.sleep(.1)
 
 arduino.close()
 
