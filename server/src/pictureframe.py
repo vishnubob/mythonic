@@ -1,3 +1,5 @@
+import colorsys
+
 # see mythonic.py for wired version
 class PictureFrame(object):
     "A picture frame with lighting"
@@ -18,10 +20,6 @@ class PictureFrame(object):
 
     MAX_WHITE = 0xff
     MIN_WHITE = 0x0
-
-    MAX_HUE        = max(MAX_RED, MAX_GREEN, MAX_BLUE)
-    MAX_VALUE      = max(MAX_RED, MAX_GREEN, MAX_BLUE)
-    MAX_SATURATION = max(MAX_RED, MAX_GREEN, MAX_BLUE)
 
     def __init__(self):
         self._red   = 0
@@ -108,6 +106,30 @@ class PictureFrame(object):
         return self._increase_or_ceiling(self.get_white, self.set_white, increase, ceiling)
     def decrease_white(self, decrease=1, floor=MIN_WHITE):
         return self._decrease_or_floor(self.get_white, self.set_white, decrease, floor)
+
+    def get_hsv(self):
+        red = self.red / float(self.MAX_RED)
+        green = self.green / float(self.MAX_RED)
+        blue = self.blue / float(self.MAX_BLUE)
+        hsv = colorsys.rgb_to_hsv(red, green, blue)
+        return hsv
+    def set_hsv(self, hsv):
+        rgb = colorsys.hsv_to_rgb(*hsv)
+        self.red = self.MAX_RED * rgb[0]
+        self.green = self.MAX_GREEN * rgb[1]
+        self.blue = self.MAX_BLUE * rgb[2]
+    hsv = property(get_hsv, set_hsv)
+
+    def set_hue(self, hue):
+        self.hsv = (hue, self.hsv[1], self.hsv[2])
+    def get_hue(self):
+        return self.hsv[0]
+    hue = property(get_hue, set_hue)
+
+    def increase_hue(self, increase=1/255.0, ceiling=1):
+        return self._increase_or_ceiling(get_hue, set_hue, increase, ceiling)
+    def decrease_hue(self, decrease=1/255.0, floor=0):
+        return self._decrease_or_floor(get_hue, set_hue, decrease, floor)
 
     def _increase_or_ceiling(self, get_light, set_light, increase, ceiling):
         "Increase the intensity of the given light by the given intensity"
