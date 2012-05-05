@@ -16,7 +16,7 @@ class WiredMediator(Mediator):
         picture_frames = sorted(self.picture_frames)
         packets = [frame.light_update_packet() for frame in self.picture_frames]
         # 'L' plus 140 byte string representing each level
-        update = "L" + str.join('', packets).ljust(140, chr(0))
+        update = "L" + str.join('', packets).ljust(43, chr(0))
         for ch in update:
             self.bus.write(ch)
 
