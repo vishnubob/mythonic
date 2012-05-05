@@ -6,6 +6,10 @@ from event import *
 
 class MythonicMediator(WiredMediator):
 
+    # Disable event reading for now
+    def read_event(self):
+        return None
+
     def __init__(self, picture_frames, bus):
         super(MythonicMediator, self).__init__(picture_frames, bus)
 
@@ -30,30 +34,40 @@ class MythonicMediator(WiredMediator):
 
         return super(MythonicMediator, self).handle_event(event)
 
+class ScreenSaverMode(Mode):
+
+    def think(self):
+        "Awesome effects go here!"
+
+class IdleMode(Mode):
+
+    def think(self):
+        if self.time_passed >= 1:
+            self.send_mediator(ModeEnd(self))
+
 class InstrumentMode(Mode):
+
+    def start(self):
+        super(InstrumentMode, self).start()
+
+        self.should_increase_hue = True
+
+        for p in self.picture_frames:
+            p.blackout()
+        self.send_mediator(LightChange(self))
+
+    def think(self):
+        "fade old boxes"
 
     def handle_event(self, event):
         if not isinstance(event, Touch):
             return False
 
-        touch = event
         frame = event.picture_frame
-
-        frame.set_blue(touch.up)
-        frame.set_green(touch.left)
-        frame.set_red(touch.down)
-        frame.set_uv(touch.right)
+        if self.should_increase_hue:
+            self.should_increase_hue = frame.increase_hue()
+        else:
+            self.should_increase_hue = not frame.decrease_hue()
 
         self.send_mediator(LightChange(self))
 
-class ScreenSaverMode(Mode):
-
-    def think(self):
-        "Awesome effects"
-        self.send_mediator(ModeEnd(self))
-
-class IdleMode(Mode):
-
-    def think(self):
-        if self.time_passed >= 5:
-            self.send_mediator(ModeEnd(self))
