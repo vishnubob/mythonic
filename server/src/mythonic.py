@@ -1,137 +1,59 @@
 """Mythonic/installation-specific implementations of abstractions"""
 
-import random
-from storyboard   import InteractiveStory
-from spectacle    import SpectacleSchedule
-from pictureframe import FadeBlack, Touch
-from wired        import WiredStoryboard, WiredPictureFrame
+from wired import WiredMediator
+from mode import Mode
+from event import *
 
-class MythonicStoryboard(WiredStoryboard):
-    "Yay storyboard full of our mythonic stories!"
+class MythonicMediator(WiredMediator):
 
-    def __init__(self, bus, picture_frames):
-        super(MythonicStoryboard, self).__init__(bus, [])
+    def __init__(self, picture_frames, bus):
+        super(MythonicMediator, self).__init__(picture_frames, bus)
 
-        # Kick in screen saver after 3 time codes of silence
-        self.screensaver    = Screensaver(picture_frames, 3)
-        # Kick in tilt based on rolling average of 10 interactions
-#        self.tilt_mode      = Tilt(picture_frames, 10, 10)
-#        # Yay!
-#        self.pictured_story = OctopusAndBuilder(picture_frames)
-        # Instrument mode
-        self.instrument     = Instrument(picture_frames)
-#
-        self.append(self.screensaver)
-#        self.append(self.tilt_mode)
-#        self.append(self.pictured_story)
-        self.append(self.instrument)
-#
-    def update(self, time_code):
-        "Update stories and board based on given time_code"
-        interaction = self.read_interaction(time_code)
+        self.idle_mode = IdleMode(picture_frames, self)
+        self.screensaver_mode = ScreenSaverMode(picture_frames, self)
+        self.instrument_mode = InstrumentMode(picture_frames, self)
 
-        stories_to_update = []
-        # If either of these are active, we want only them to run
-#        if self.tilt_mode.is_running or self.screensaver.is_running:
-#           stories_to_update = [self.tilt_mode, self.screensaver]
-        if self.screensaver.is_running:
-            stories_to_update = [self.screensaver]
-        else:
-            stories_to_update = list(self)
+        self.activate_mode(self.idle_mode)
 
-        something_ran = False
-        for story in stories_to_update:
-            if interaction is not None:
-                story.interact(interaction, time_code)
-            something_ran = story.advance_plot(time_code) or something_ran
-
-        # shitty way of deciding this
-        if something_ran: 
-            self.refresh()
-
-class MythonicPictureFrame(WiredPictureFrame):
-    "Mythonic picture frame"
-
-class MythonicStory(InteractiveStory):
-    "An exciting story from the good folks at Mythonic UnLtd."
-
-#class OctopusAndBuilder(MythonicStory):
-#    "Interactive story on our pictures"
-
-class Instrument(MythonicStory):
-    "Allows the user to define the stories themself"
-
-    def _should_start(self, time_code):
-        return len(self.interactions) > 0
-
-    def _handle_interaction(self, interaction):
-        "Adjusts lights based on Touch inputs"
-        sched = self._schedule
-
-        if not isinstance(interaction, Touch):
-            return
-        touch = interaction
-        frame = touch.picture_frame
-        
-        # Schedule changes to happen immediately
-        sched.schedule(lambda : frame.set_blue(touch.up), 0)
-        sched.schedule(lambda : frame.set_green(touch.left), 0)
-        sched.schedule(lambda : frame.set_red(touch.down), 0)
-        sched.schedule(lambda : frame.set_uv(touch.right), 0)
-
-#class Tilt(MythonicStory):
-#    "Tilt mode. When input rate spikes, freak out and go silent."
-#
-#    def __init__(self, picture_frames, threshold, sample_size, timeout):
-#        "Threshold is in interactions per whole time code."
-#        super(Tilt, self).__init__(picture_frames)
-#        self.threshold = threshold
-#        self.sample_size = sample_size
-#        self.timeout = timeout
-#
-
-class Screensaver(MythonicStory):
-    "Free running animation to attract people. Interaction stops."
-
-    def __init__(self, picture_frames, timeout):
-        super(Screensaver, self).__init__(picture_frames)
-
-        self.timeout = timeout
-
-    def _should_start(self, time_code):
-        if len(self.interactions) <= 0:
+    def handle_event(self, event):
+        if isinstance(event, ModeEnd):
+            mode = event.mode
+            if mode is self.idle_mode or mode is self.screensaver_mode:
+                self.activate_mode(self.screensaver_mode)
+            else:
+                self.activate_mode(self.idle_mode)
             return True
+        if isinstance(event, Touch):
+            # Put into instrument mode if not already
+            if self.active_mode is not self.instrument_mode:
+                self.activate_mode(self.instrument_mode)
 
-        return time_code - self.interactions[-1].time_code >= self.timeout
+        return super(MythonicMediator, self).handle_event(event)
 
-    def _should_stop(self, time_code):
-        return len(self.interactions) > 0
+class InstrumentMode(Mode):
 
-    def _make_schedule(self, time_offset=0):
-        "Screen saver schedule from offset. Restarts at end."
-        sched = SpectacleSchedule(time_offset)
-        frames = self.picture_frames
+    def handle_event(self, event):
+        if not isinstance(event, Touch):
+            return False
 
-        # Black out the lights
-        for p in frames:
-            sched.append_spectacle(FadeBlack(p, 1))
+        touch = event
+        frame = event.picture_frame
 
-        first_frame = frames[0]
-        # Make the frame shine blue
-        sched.append(lambda : first_frame.set_blue(p.MAX_BLUE))
-        # Blackout first frame after 2 whole time codes 
-        sched.append(first_frame.blackout, 2)
+        frame.set_blue(touch.up)
+        frame.set_green(touch.left)
+        frame.set_red(touch.down)
+        frame.set_uv(touch.right)
 
-        # Random white flashes
-        rand_frames = list(frames[1:])
-        random.shuffle(rand_frames)
-        for p in rand_frames:
-            sched.append(lambda p=p: p.set_white(p.MAX_WHITE))
-            # After one time code, black out
-            sched.append(p.blackout, 1)
+        self.send_mediator(LightChange(self))
 
-        # Restart the schedule
-        sched.append(lambda : self.restart_schedule(sched.insertion_point))
+class ScreenSaverMode(Mode):
 
-        return sched
+    def think(self):
+        "Awesome effects"
+        self.send_mediator(ModeEnd(self))
 
+class IdleMode(Mode):
+
+    def think(self):
+        if self.time_passed >= 5:
+            self.send_mediator(ModeEnd(self))

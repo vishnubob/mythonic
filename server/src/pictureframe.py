@@ -1,27 +1,3 @@
-from spectacle import Repeat
-
-class Interaction(object):
-    "Interaction with a picture frame"
-
-    __slots__ = ["picture_frame", "time_code"]
-
-    def __init__(self, picture_frame, time_code):
-        self.picture_frame = origin
-        self.time_code     = time_code
-
-class Touch(Interaction):
-    "Represents a picture frame being touched"
-
-    __slots__ = ["up", "down", "left", "right"]
-
-    def __init__(self, picture_frame, time_code, up, down, left, right):
-        super(Touch, self).__init__(picture_frame, time_code)
-
-        self.up    = up
-        self.down  = down
-        self.left  = left
-        self.right = right
-
 # see mythonic.py for wired version
 class PictureFrame(object):
     "A picture frame with lighting"
@@ -157,14 +133,3 @@ class PictureFrame(object):
         self.set_blue(self.MIN_BLUE)
         self.set_uv(self.MIN_UV)
         self.set_white(self.MIN_WHITE)
-
-#
-# Spectacle specific to picture frames
-#
-#class Fade(Repeat)
-class FadeBlack(Repeat):
-    def __init__(self, picture_frame, duration):
-        p = picture_frame
-        # XXX: BROKEN. These are the values at the time of creating the spectacle not running it. 
-        brightest = max(p.red, p.green, p.blue, p.uv, p.white)
-        super(FadeBlack, self).__init__(p.decrease_all, brightest, duration)
