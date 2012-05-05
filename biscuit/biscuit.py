@@ -9,7 +9,7 @@ port = serial.Serial(sys.argv[1], 250000)
 def send(data):
     for ch in data:
         port.write(ch)
-        recv()
+        port.flush()
 
 def recv():
     if not port.inWaiting():
@@ -22,18 +22,31 @@ def recv():
         print "unk", ch, ord(ch)
 
 def pulse():
-    while 1:
+    for ch in range(6):
+        if ch == 1:
+            continue
         for x in range(0xff):
-            print x
-            cmd = 'L' + (chr(0) * 2) + chr(x) + (chr(0) * 137)
-            send(cmd)
+            data = [0, 0, 0, 0, 0, 0]
+            data[ch] = x
+            final = []
+            for box in range(7):
+                final.extend(data) 
+            cmd = 'L' + str.join('', map(chr, final))
+            print x, len(cmd)
+            port.write(cmd)
             port.flush()
-            time.sleep(.05)
+            time.sleep(.01)
         for x in range(0xff, 0, -1):
-            print x
-            cmd = 'L' + (chr(0) * 2) + chr(x) + (chr(0) * 137)
-            send(cmd)
-            time.sleep(.05)
+            data = [0, 0, 0, 0, 0, 0]
+            data[ch] = x
+            final = []
+            for box in range(7):
+                final.extend(data) 
+            cmd = 'L' + str.join('', map(chr, final))
+            print x, len(cmd)
+            port.write(cmd)
+            port.flush()
+            time.sleep(.01)
 
 def ping():
     for x in range(7):
@@ -41,5 +54,7 @@ def ping():
         cmd = 'R' + chr(x)
         port.write(cmd)
 
-ping()
+while 1:
+    pulse()
+#ping()
 

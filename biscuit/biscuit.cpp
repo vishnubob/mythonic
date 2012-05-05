@@ -117,7 +117,7 @@ private:
  ** Globals
  ******************************************************************************/
 
-#define LIGHT_MSG 140
+#define LIGHT_MSG (LED_COUNT * 7)
 #define TOUCH_MSG 1
 
 Pin             leds[LED_COUNT];
@@ -257,7 +257,7 @@ void poll_input(void)
             {
                 while (!Serial.available()) {}
                 light_buffer[idx] = Serial.read();
-                Serial.println(light_buffer[idx], DEC);
+                //Serial.println(light_buffer[idx], DEC);
             }
         } else
         if (ch == 'T')
@@ -300,6 +300,7 @@ void loop()
         //leds[ch].set(light_buffer[ch]);
     }
 
+    /*
     interval = (interval + 1) % TOUCH_INTERVAL;
     if (interval == 0)
     {
@@ -313,4 +314,5 @@ void loop()
             disable_serial_output();
         }
     }
+    */
 }
