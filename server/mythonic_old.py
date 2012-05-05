@@ -13,26 +13,30 @@ def main():
         print "Example: {0} 129 128:0 /dev/ttyUSB0".format(sys.argv[0])
         exit(2)
 
+
     script_name, control_client, music_client_port, tty = sys.argv
     music_client, music_port = map(int, music_client_port.split(":"))
+
+    bus = tty #serial.Serial(tty)
+    storyboard = WiredStoryboard(bus, [WiredPictureFrame(i) for i in range(7)])
     
-    # The personale running the show
-    music_conductor = MusicConductor(music_client, music_port)
-    light_conductor = LightConductor(light_client)
-    director        = Director([music_conductor, light_conductor])
-
-    # Create a stage with one picture_frame
-    stage = Stage(tty, 1)
-
-    # Start the mainloop. Time codes are worth 1/4th a second
-    director.direct(stage, 0.25)
+     # The personale running the show
+#    music_conductor = MusicConductor(music_client, music_port)
+#    light_conductor = LightConductor(light_client)
+#    director        = Director([music_conductor, light_conductor])
+#
+#    # Create a stage with one picture_frame
+#    stage = Stage(tty, 1)
+#
+#    # Start the mainloop. Time codes are worth 1/4th a second
+#    director.direct(stage, 0.25)
 
 class PictureFrame(object):
     "A picture frame with lighting"
 
     __slots__ = ["red", "green", "blue", "uv", "white"]
 
-    def __init__(self):
+    def __init__(self, address):
         self.address = address
         self.last_touched = None
 
@@ -82,7 +86,7 @@ class WiredStoryboard(Storyboard):
         return None
 
 class Feedback(object):
-    "Feedback from our audiance/stage"
+    "Feedback from our audiance"
 
 class Touch(Feedback):
     "Represents one of our picture_frames being touched"
@@ -114,6 +118,7 @@ class Director(object):
             feedback = stage.next_feedback()
             if not feedback is None:
                 for conductor in self.conductors:
+                    1;
                     conductor.react(stage, time_code, feedback)
 
 class Conductor(object):

@@ -59,11 +59,11 @@ class Wall_Visualizer(object):
 
 def main():
 	
-	#if len(sys.argv) < 2:
-	#	print "usage: python sssim.py /dev/ttySerialPort"
-	#	exit(0)
+	if len(sys.argv) < 2:
+		print "usage: python sssim.py /dev/ttySerialPort"
+		exit(0)
 		
-	#sport = serial.Serial(sys.argv[1], 9600, timeout=1)	
+	sport = serial.Serial(sys.argv[1], 9600, timeout=1)	
 	
 	gui = Wall_Visualizer(6,5)
 	
@@ -93,13 +93,13 @@ def main():
 		 
 	while 1:
 		gui.draw(wall)
-		#bytedata = sport.read(1)
-		#if bytedata == 'm':
-		#	bytedata = sport.read(120)
-		#	if len(bytedata) == 120:
-		#		data = unpack('120c', bytedata)
-		#		for b in range(0,19):
-		#			wall[b].color = (data[b*6+0], data[b*6+1], data[b*6+2])
+		bytedata = sport.read(1)
+		if bytedata == 'm':
+			bytedata = sport.read(120)
+			if len(bytedata) == 120:
+				data = unpack('120c', bytedata)
+				for b in range(0,19):
+					wall[b].color = (data[b*6+0], data[b*6+1], data[b*6+2])
 	
 	return 0
 
