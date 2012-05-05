@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+import sys
 import serial
 import time
 
-port = serial.Serial('/dev/tty.usbserial-A100JOEV', 250000)
+port = serial.Serial(sys.argv[1], 250000)
 
 def send(data):
     for ch in data:
@@ -34,4 +35,11 @@ def pulse():
             send(cmd)
             time.sleep(.05)
 
-pulse()
+def ping():
+    for x in range(7):
+        raw_input("next %s>" % (x + 1))
+        cmd = 'R' + chr(x)
+        port.write(cmd)
+
+ping()
+
