@@ -1,26 +1,4 @@
-from spectacle import Repeat
-
-class Interaction(object):
-    "Interaction with a picture frame"
-
-    __slots__ = ["picture_frame", "time_code"]
-
-    def __init__(self, picture_frame, time_code):
-        self.picture_frame = origin
-        self.time_code     = time_code
-
-class Touch(Interaction):
-    "Represents a picture frame being touched"
-
-    __slots__ = ["up", "down", "left", "right"]
-
-    def __init__(self, picture_frame, time_code, up, down, left, right):
-        super(Touch, self).__init__(picture_frame, time_code)
-
-        self.up    = up
-        self.down  = down
-        self.left  = left
-        self.right = right
+import colorsys
 
 # see mythonic.py for wired version
 class PictureFrame(object):
@@ -42,10 +20,6 @@ class PictureFrame(object):
 
     MAX_WHITE = 0xff
     MIN_WHITE = 0x0
-
-    MAX_HUE        = max(MAX_RED, MAX_GREEN, MAX_BLUE)
-    MAX_VALUE      = max(MAX_RED, MAX_GREEN, MAX_BLUE)
-    MAX_SATURATION = max(MAX_RED, MAX_GREEN, MAX_BLUE)
 
     def __init__(self):
         self._red   = 0
@@ -133,6 +107,30 @@ class PictureFrame(object):
     def decrease_white(self, decrease=1, floor=MIN_WHITE):
         return self._decrease_or_floor(self.get_white, self.set_white, decrease, floor)
 
+    def get_hsv(self):
+        red = self.red / float(self.MAX_RED)
+        green = self.green / float(self.MAX_RED)
+        blue = self.blue / float(self.MAX_BLUE)
+        hsv = colorsys.rgb_to_hsv(red, green, blue)
+        return hsv
+    def set_hsv(self, hsv):
+        rgb = colorsys.hsv_to_rgb(*hsv)
+        self.red = self.MAX_RED * rgb[0]
+        self.green = self.MAX_GREEN * rgb[1]
+        self.blue = self.MAX_BLUE * rgb[2]
+    hsv = property(get_hsv, set_hsv)
+
+    def set_hue(self, hue):
+        self.hsv = (hue, self.hsv[1], self.hsv[2])
+    def get_hue(self):
+        return self.hsv[0]
+    hue = property(get_hue, set_hue)
+
+    def increase_hue(self, increase=1/255.0, ceiling=1):
+        return self._increase_or_ceiling(get_hue, set_hue, increase, ceiling)
+    def decrease_hue(self, decrease=1/255.0, floor=0):
+        return self._decrease_or_floor(get_hue, set_hue, decrease, floor)
+
     def _increase_or_ceiling(self, get_light, set_light, increase, ceiling):
         "Increase the intensity of the given light by the given intensity"
         intensity = get_light() + increase
@@ -157,14 +155,3 @@ class PictureFrame(object):
         self.set_blue(self.MIN_BLUE)
         self.set_uv(self.MIN_UV)
         self.set_white(self.MIN_WHITE)
-
-#
-# Spectacle specific to picture frames
-#
-#class Fade(Repeat)
-class FadeBlack(Repeat):
-    def __init__(self, picture_frame, duration):
-        p = picture_frame
-        # XXX: BROKEN. These are the values at the time of creating the spectacle not running it. 
-        brightest = max(p.red, p.green, p.blue, p.uv, p.white)
-        super(FadeBlack, self).__init__(p.decrease_all, brightest, duration)

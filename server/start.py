@@ -2,8 +2,8 @@
 
 import sys
 import serial
-from metranome import Metranome
 from mythonic import *
+from wired import *
 
 def main():
     if len(sys.argv) != 2:
@@ -13,21 +13,14 @@ def main():
         exit(2)
 
     tty = sys.argv[1]
-    bus = serial.Serial(tty)
+    bus = serial.Serial(tty, 250000)
 
-    picture_frames = [MythonicPictureFrame(i) for i in range(7)]
-    storyboard = MythonicStoryboard(bus, picture_frames)
+    picture_frames = [WiredPictureFrame(i) for i in range(7)]
+    mediator = MythonicMediator(picture_frames, bus)
 
-    metranome = Metranome(60)
-    beat = metranome.start()
-    while beat is None or beat < 10:
-        if beat is not None:
-            print "==== " + str(beat) + " ====="
-
-        storyboard.update(metranome.time())
-
-        # "None" if a beat passes, a whole beat number otherwise
-        beat = metranome.next_beat()
+    while True:
+        time.sleep(0.1)
+        mediator.think()
 
 if __name__ == "__main__":
     main()
