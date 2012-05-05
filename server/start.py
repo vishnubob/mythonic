@@ -13,7 +13,7 @@ def main():
         exit(2)
 
     tty = sys.argv[1]
-    bus = serial.Serial(tty)
+    bus = serial.Serial(tty, 250000)
 
     picture_frames = [WiredPictureFrame(i) for i in range(7)]
     mediator = MythonicMediator(picture_frames, bus)
