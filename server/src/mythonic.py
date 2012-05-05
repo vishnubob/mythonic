@@ -28,7 +28,7 @@ class MythonicStoryboard(WiredStoryboard):
 #
     def update(self, time_code):
         "Update stories and board based on given time_code"
-        interaction = self.read_event(time_code)
+        interaction = self.read_interaction(time_code)
 
         stories_to_update = []
         # If either of these are active, we want only them to run

@@ -15,11 +15,14 @@ class WiredStoryboard(Storyboard):
 
     def refresh_lighting(self):
         "Update lighting based on state of picture frames"
+        picture_frames = sorted(self.picture_frames)
         packets = [frame.packet() for frame in self.picture_frames]
-        for ch in str.join('', packets):
+        # 'L' plus 140 byte string representing each level
+        update = "L" + sr.join('', packets).ljust(140, chr(0))
+        for ch in update
             self.bus.write(ch)
 
-    def read_event(self, time_code):
+    def read_interaction(self, timestamp):
         "Returns an Interaction"
         if self.bus.inWaiting() < 6:
             return None
@@ -33,23 +36,23 @@ class WiredStoryboard(Storyboard):
         v1, v2, v3, v4 = map(int, packet[2:5])
 
         if command == "T":
-            return Touch(picture_frame, time_code, v1, v2, v3, v4)
+            return Touch(picture_frame, timestamp, v1, v2, v3, v4)
 
         return None
 
 class WiredPictureFrame(PictureFrame):
     "A picture frame with support for our protocol"
 
-    __slots__ = ["address"]
+    __slots__ = ["ordinal"]
 
-    def __init__(self, address):
+    def __lt__(self, other):
+        return self.ordinal < other.ordinal
+
+    def __init__(self, ordinal):
         super(WiredPictureFrame, self).__init__()
-        self.address = address
 
-    def lights_by_channel(self):
-        "light intensities ordered by their corresponding channels on board"
-        return [self.red, self.green, self.blue, self.uv, self.white]
+        self.ordinal = ordinal 
 
-    def packet(self):
-        return 'W' + str.join('', map(chr, [self.address] + self.lights_by_channel()))
-
+    def light_update_packet(self):
+        lights = [self.red, 0, self.green, self.blue, self.white, self.uv]
+        return str.join('', map(chr, lights))
