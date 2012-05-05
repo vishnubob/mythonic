@@ -12,6 +12,7 @@
 #define PROMPT_ENABLE       1
 #define LED_COUNT           6
 #define DE485_PIN           7
+#define TOUCH_INTERVAL      25
 #define RE485_PIN           A5
 
 // Helper macros for frobbing bits
@@ -113,149 +114,16 @@ private:
 
 
 /******************************************************************************
- ** Ramp
- ******************************************************************************/
-
-class Ramp
-{
-public:
-    void init(int pt1, int pt2, unsigned long ttl, unsigned long delay=0, bool loop_flag=false, bool flip_flag=false)
-    {
-        _enable = false;
-        _delay = 0;
-        _loop_flag = loop_flag;
-        _flip_flag = flip_flag;
-        set_ramp(pt1, pt2, ttl);
-    }
-
-    void set_ramp(int pt1, int pt2, unsigned long ttl)
-    {
-        _pt1 = pt1;
-        _pt2 = pt2;
-        _ttl = ttl;
-        set_clock();
-    }
-
-    void set_clock()
-    {
-        _timestamp = millis() + _delay;
-        _slope = static_cast<float>(_pt2 - _pt1) / static_cast<float>(_ttl);
-    }
-
-    int step()
-    {
-        if (millis() < _timestamp)
-        {
-            return _value;
-        }
-        if (_enable) {
-            if (timeout()) {
-                _value = _pt2;
-                _enable = _loop_flag;
-                if (_flip_flag) {
-                    flip();
-                } else
-                {
-                    reset();
-                }
-            } else {
-                _value = (millis() - _timestamp) * _slope + _pt1;
-            }
-        }
-        return _value;
-    }
-
-    void print()
-    {
-        Serial.print(" [");
-        Serial.print(_pt1, DEC);
-        Serial.print("-");
-        Serial.print(_pt2, DEC);
-        Serial.print("]: ");
-        Serial.print(_value, DEC);
-        Serial.print(" delay: ");
-        Serial.print(_delay, DEC);
-        Serial.print(" ttl: ");
-        Serial.print(_ttl, DEC);
-        Serial.print(" flip: ");
-        Serial.print(_flip_flag, DEC);
-        Serial.print(" loop: ");
-        Serial.print(_loop_flag, DEC);
-        Serial.print(" en: ");
-        Serial.println(_enable, DEC);
-    }
-
-    void flip() { set_ramp(_pt2, _pt1, _ttl); }
-    void reset() { set_ramp(_pt1, _pt2, _ttl); }
-    void enable() { _enable = true; reset(); }
-    void disable()  { _enable = false; }
-    bool is_enabled()  { return _enable; }
-    void set_delay(unsigned long delay) { _delay = delay; }
-    void set_flip(bool flag) { _flip_flag = flag; }
-    void set_loop(bool flag) { _loop_flag = flag; }
-    void set_pt1(int pt1) { _pt1 = pt1; reset(); }
-    void set_pt2(int pt2) { _pt2 = pt2; reset(); }
-    void set_ttl(unsigned long ttl) { _ttl = ttl; reset(); }
-    bool timeout() { return ((millis() - _timestamp) >= _ttl); }
-    int get_value() { return _value; }
-
-private:
-    int _pt1;
-    int _pt2;
-    int _value;
-    unsigned long _ttl;
-    unsigned long _delay;
-    unsigned long _timestamp;
-    float _slope;
-    bool _enable;
-    bool _flip_flag;
-    bool _loop_flag;
-};
-
-/******************************************************************************
  ** Globals
  ******************************************************************************/
 
-Ramp            ramps[LED_COUNT];
+#define LIGHT_MSG 140
+#define TOUCH_MSG 1
+
 Pin             leds[LED_COUNT];
 uint8_t         board_addr;
+uint8_t         light_buffer[LIGHT_MSG];
 
-/******************************************************************************
- ** Setup
- ******************************************************************************/
-
-void setup()
-{
-    // pins
-    Serial.begin(115200);
-    pinMode(GRN, OUTPUT);
-    pinMode(RED, OUTPUT);
-    pinMode(DE485_PIN, OUTPUT);
-    pinMode(RE485_PIN, OUTPUT);
-    enable_serial_output();
-    Serial.print("[");
-    
-    // priming
-    Serial.print("init C ...");
-    Serial.println("]");
-
-    /*
-    int addr = BOARD_ADDR;
-    board_addr = read_byte(addr);
-    */
-
-    /*
-    for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
-    {
-        leds[ch].init(_led_map[ch]);
-    }
-    */
-    
-    // blink the LED
-    Serial.println("init done!");
-    delay(500);
-    disable_serial_output();
-}
 
 /* touch */
 
@@ -263,7 +131,7 @@ class Average
 {
 public:
     Average(uint8_t sz) :
-        _sz(sz), _idx(0)
+        _sz(8), _idx(0)
     {
         _data = (long*)malloc(_sz * sizeof(long));
         memset(_data, 0, _sz * sizeof(long));
@@ -282,10 +150,10 @@ public:
         {
             sum += _data[sum_idx];
         }
-        return (sum / ((float)_sz));
+        return (sum >> 3);
     }
 
-    void set(uint8_t offset)
+    void set(long offset)
     {
         _level = pull() + offset;
     }
@@ -307,224 +175,134 @@ CapSense   tch2 = CapSense(A0, A2);
 CapSense   tch3 = CapSense(A0, A3);
 CapSense   tch4 = CapSense(A0, A4);
 
-Average    avg_tch1 = Average(10);
-Average    avg_tch2 = Average(10);
-Average    avg_tch3 = Average(10);
-Average    avg_tch4 = Average(10);
+Average    avg_tch1 = Average(8);
+Average    avg_tch2 = Average(8);
+Average    avg_tch3 = Average(8);
+Average    avg_tch4 = Average(8);
 
-void sample()
+void sample_touch_sensors()
 {
-    avg_tch1.push(tch1.capSense(50));
-    avg_tch2.push(tch2.capSense(50));
-    avg_tch3.push(tch3.capSense(50));
-    avg_tch4.push(tch4.capSense(50));
+    avg_tch1.push(tch1.capSense(5));
+    avg_tch2.push(tch2.capSense(5));
+    avg_tch3.push(tch3.capSense(5));
+    avg_tch4.push(tch4.capSense(5));
 }
+
+bool trigger_touch_sensors()
+{
+    return (avg_tch1.trigger() || avg_tch2.trigger() || avg_tch3.trigger() || avg_tch4.trigger());
+}
+
+void normalize_touch_sensors()
+{
+    for(int x = 0; x < 10; ++x)
+    {
+        sample_touch_sensors();
+        delay(100);
+    }
+    avg_tch1.set(500);
+    avg_tch2.set(500);
+    avg_tch3.set(500);
+    avg_tch4.set(500);
+}
+
+/******************************************************************************
+ ** Setup
+ ******************************************************************************/
+
+void setup()
+{
+    // pins
+    Serial.begin(250000);
+    pinMode(GRN, OUTPUT);
+    pinMode(RED, OUTPUT);
+    pinMode(DE485_PIN, OUTPUT);
+    pinMode(RE485_PIN, OUTPUT);
+    disable_serial_output();
+    
+    for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
+    {
+        leds[ch].init(_led_map[ch]);
+        leds[ch].set(0);
+    }
+    
+    int addr = BOARD_ADDR;
+    board_addr = read_byte(addr);
+    board_addr = 0;
+    memset(light_buffer, 0, LIGHT_MSG * sizeof(char));
+    normalize_touch_sensors();
+    digitalWrite(GRN, HIGH);
+}
+
 
 /******************************************************************************
  ** Serial
  ******************************************************************************/
 
-#if PROMPT_ENABLE
-void Prompt(void)
+void poll_input(void)
 {
-  static long v = 0;
-  static unsigned char channel = 0;
-  bool echo_on = true;
-
-  //Serial.println((Serial.available() ? "Y" : "N"));
-  if (Serial.available()) 
-  {
-    char ch = Serial.read();
-    if (ch == 'a')
+    if (Serial.available()) 
     {
-        digitalWrite(RED, HIGH);
-    } else
-    if (ch == 'b')
-    {
-        digitalWrite(RED, LOW);
-    }
-    enable_serial_output();
-    Serial.println(ch, DEC);
-    disable_serial_output();
-  }
-
-  if(0)
-  {
-    char ch = Serial.read();
-
-    switch(ch) {
-      case '0'...'9':
-        v = v * 10 + ch - '0';
-        break;
-      case '-':
-        v *= -1;
-        break;
-      case 'z':
-        v = 0;
-        break;
-      case '&':
-        Serial.print("!");
-        echo_on = false;
-        break;
-      case 'W':
-        for (uint8_t idx = 0; idx < LED_COUNT; ++idx)
+        char ch = Serial.read();
+        if (ch == 'L')
         {
+            for(uint8_t idx = 0; idx < LIGHT_MSG; ++idx)
+            {
+                while (!Serial.available()) {}
+                light_buffer[idx] = Serial.read();
+                Serial.println(light_buffer[idx], DEC);
+            }
+        } else
+        if (ch == 'T')
+        {
+            // toss this
             while (!Serial.available()) {}
-            leds[idx].set(Serial.read());
-        }
-        echo_on = false;
-        break;
-      case 's':
-        leds[channel].set(v);
-        v = 0;
-        break;
-      case 'C':
-        channel = v;
-        Serial.println("");
-        Serial.println("channel set");
-        v = 0;
-        break;
-      case 'd':
-        ramps[channel].set_delay(v);
-        v = 0;
-        Serial.println("");
-        Serial.println("delay set");
-        break;
-      case 'o':
-        ramps[channel].set_pt1(v);
-        Serial.println("");
-        Serial.println("pt1 set");
-        v = 0;
-        break;
-      case 'O':
-        ramps[channel].set_pt2(v);
-        Serial.println("");
-        Serial.println("pt2 set");
-        v = 0;
-        break;
-      case 'T':
-        ramps[channel].set_ttl(v);
-        Serial.println("");
-        Serial.println("ttl set");
-        v = 0;
-        break;
-      case 'F':
-        ramps[channel].set_flip(true);
-        Serial.println("");
-        Serial.println("flip on");
-        break;
-      case 'f':
-        ramps[channel].set_flip(false);
-        Serial.println("");
-        Serial.println("flip off");
-        break;
-      case 'L':
-        ramps[channel].set_loop(true);
-        Serial.println("");
-        Serial.println("loop on");
-        break;
-      case 'l':
-        ramps[channel].set_loop(false);
-        Serial.println("");
-        Serial.println("loop off");
-        break;
-      case 'E':
-        ramps[channel].enable();
-        Serial.println("");
-        Serial.println("enabled");
-        break;
-      case 'e':
-        ramps[channel].disable();
-        Serial.println("");
-        Serial.println("disabled");
-        break;
-      case 'g':
-        for (uint8_t idx = 0; idx < LED_COUNT; ++idx)
+            Serial.read();
+        } else
+        if (ch == 'Z')
         {
-            ramps[idx].set_clock();
-            ramps[idx].enable();
+            for(uint8_t idx = 0; idx < LIGHT_MSG; ++idx)
+            {
+                light_buffer[idx] = 0;
+            }
         }
-        break;
-      case 'x':
-        for (uint8_t idx = 0; idx < LED_COUNT; ++idx)
-        {
-            ramps[idx].disable();
-            leds[idx].set(0);
-        }
-        break;
-      case 'p':
-        Serial.println("");
-        for (uint8_t idx = 0; idx < LED_COUNT; ++idx)
-        {
-            Serial.print(idx, DEC);
-            Serial.print(": ");
-            ramps[idx].print();
-        }
-        Serial.print("TCH1: ");
-        Serial.print(tch1.capSense(50), DEC);
-        Serial.print(" TCH2: ");
-        Serial.print(tch2.capSense(50), DEC);
-        Serial.print(" TCH3: ");
-        Serial.print(tch3.capSense(50), DEC);
-        Serial.print(" TCH4: ");
-        Serial.print(tch4.capSense(50), DEC);
-        Serial.println("");
-
-        break;
-      default:
-        Serial.print("Unknown command: ");
-        Serial.println(ch, DEC);
     }
-    if (echo_on)
-    {
-        Serial.println("");
-        Serial.print("Value: ");
-        Serial.print(v, DEC);
-        Serial.print(" - Channel: ");
-        Serial.print(channel, DEC);
-        Serial.print(" - millis: ");
-        Serial.println(millis(), DEC);
-        Serial.print("> ");
-    }
-  disable_serial_output();
-  }
 }
-#endif // PROMPT_ENABLE
 
 /******************************************************************************
  ** Main loop
  ******************************************************************************/
+
+void _loop()
+{
+    static int interval = 0;
+
+    poll_input();
+    for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
+    {
+        leds[ch].set(light_buffer[ch + (LED_COUNT * board_addr)]);
+        //leds[ch].set(light_buffer[ch]);
+    }
+
+    interval = (interval + 1) % TOUCH_INTERVAL;
+    if (interval == 0)
+    {
+        sample_touch_sensors();
+        if (trigger_touch_sensors())
+        {
+            enable_serial_output();
+            Serial.write('T');
+            Serial.flush();
+            Serial.write(board_addr);
+            disable_serial_output();
+        }
+    }
+}
+
 void loop()
 {
-
-    /*
-    for(int x=0; x < 6; ++x)
+    for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
     {
-        ramps[x].set_flip(true);
-        ramps[x].set_loop(true);
-        ramps[x].set_pt2(0xff);
-        ramps[x].set_ttl(1000);
-        ramps[x].set_delay(x * 1000);
-        ramps[x].enable();
-    }
-    */
-
-    //wdt_enable(WDTO_8S);
-    for(;;)
-    {
-        //wdt_reset();
-        /*
-        for (uint8_t ch = 0; ch < LED_COUNT; ++ch)
-        {
-            if (ramps[ch].is_enabled())
-            {
-                leds[ch].set(ramps[ch].step());
-            }
-        }
-        */
-        //wdt_reset();
-#if PROMPT_ENABLE
-        Prompt();
-#endif // PROMPT_ENABLE
+        leds[ch].set(0x20);
     }
 }
