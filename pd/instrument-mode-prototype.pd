@@ -10,7 +10,8 @@
 1 0 1 0 1 0 0;
 #X obj 148 23 pianoroll pianoroll2 192 186 0 1 31 16 0 0 1 0 1 0 1
 0 1 0 1 0 1 0 1 0 1 0.2 0.933333 0.333333 0.9 0.433333 0.866667 0.5
-0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0 0;
+0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0.733333
+0;
 #X obj 368 480 makenote;
 #X obj 369 519 noteout;
 #X text 477 519 midi channel;
@@ -25,7 +26,7 @@
 #X obj 9 -4 inlet;
 #X obj 290 600 outlet;
 #X obj 157 551 nbx 2 14 -1e+37 1e+37 0 0 empty empty step 30 8 0 10
--262144 -1 -1 15 256;
+-262144 -1 -1 0 256;
 #X obj 204 576 nbx 3 20 -1e+37 1e+37 0 0 empty empty white 0 28 0 10
 -262144 -1 -1 0 256;
 #X obj 157 576 nbx 3 20 -1e+37 1e+37 0 0 empty empty uv 0 28 0 10 -159808
@@ -94,7 +95,6 @@
 #X msg 62 9 stop;
 #X msg 142 126 0;
 #X obj 8 -6 inlet;
-#X obj 142 79 >= 15;
 #X obj 20 39 metro;
 #X obj 20 93 t b b;
 #X obj 21 201 outlet;
@@ -103,22 +103,23 @@
 #X text 93 224 step time;
 #X obj 114 0 inlet;
 #X msg 92 56 500;
+#X obj 142 79 >= 16;
 #X connect 0 0 1 1;
 #X connect 1 0 0 0;
-#X connect 1 0 6 0;
-#X connect 1 0 9 0;
+#X connect 1 0 8 0;
+#X connect 1 0 14 0;
 #X connect 2 0 3 0;
 #X connect 2 0 4 0;
-#X connect 3 0 7 0;
+#X connect 3 0 6 0;
 #X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 2 0;
-#X connect 7 0 8 0;
-#X connect 8 0 1 0;
-#X connect 8 1 14 0;
-#X connect 13 0 14 0;
-#X connect 14 0 7 1;
-#X connect 14 0 10 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 1 0;
+#X connect 7 1 13 0;
+#X connect 12 0 13 0;
+#X connect 13 0 6 1;
+#X connect 13 0 9 0;
+#X connect 14 0 2 0;
 #X restore 9 26 pd oneShotClock;
 #X msg 85 -5 700;
 #X text 112 -5 ms;
@@ -166,6 +167,7 @@
 #X connect 30 0 9 0;
 #X connect 30 0 3 0;
 #X connect 30 0 2 0;
+#X connect 30 0 15 0;
 #X connect 30 1 20 3;
 #X connect 30 1 33 2;
 #X connect 31 0 30 1;
@@ -187,7 +189,8 @@
 1 0 1 0 1 0 0;
 #X obj 148 23 pianoroll pianoroll2 192 186 0 1 31 16 0 0 1 0 1 0 1
 0 1 0 1 0 1 0 1 0 1 0.2 0.933333 0.333333 0.9 0.433333 0.866667 0.5
-0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0 0;
+0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0.733333
+0;
 #X obj 368 480 makenote;
 #X obj 369 519 noteout;
 #X text 477 519 midi channel;
@@ -271,7 +274,6 @@
 #X msg 62 9 stop;
 #X msg 142 126 0;
 #X obj 8 -6 inlet;
-#X obj 142 79 >= 15;
 #X obj 20 39 metro;
 #X obj 20 93 t b b;
 #X obj 21 201 outlet;
@@ -280,22 +282,23 @@
 #X text 93 224 step time;
 #X obj 114 0 inlet;
 #X msg 92 56 500;
+#X obj 142 79 >= 16;
 #X connect 0 0 1 1;
 #X connect 1 0 0 0;
-#X connect 1 0 6 0;
-#X connect 1 0 9 0;
+#X connect 1 0 8 0;
+#X connect 1 0 14 0;
 #X connect 2 0 3 0;
 #X connect 2 0 4 0;
-#X connect 3 0 7 0;
+#X connect 3 0 6 0;
 #X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 2 0;
-#X connect 7 0 8 0;
-#X connect 8 0 1 0;
-#X connect 8 1 14 0;
-#X connect 13 0 14 0;
-#X connect 14 0 7 1;
-#X connect 14 0 10 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 1 0;
+#X connect 7 1 13 0;
+#X connect 12 0 13 0;
+#X connect 13 0 6 1;
+#X connect 13 0 9 0;
+#X connect 14 0 2 0;
 #X restore 9 26 pd oneShotClock;
 #X msg 85 -5 700;
 #X text 112 -5 ms;
@@ -343,6 +346,7 @@
 #X connect 30 0 9 0;
 #X connect 30 0 3 0;
 #X connect 30 0 2 0;
+#X connect 30 0 15 0;
 #X connect 30 1 20 3;
 #X connect 30 1 33 2;
 #X connect 31 0 30 1;
@@ -352,7 +356,7 @@
 #X connect 33 1 16 0;
 #X connect 36 0 6 2;
 #X coords 0 -1 1 1 240 112 1 10 508;
-#X restore 11 137 pd storysquare;
+#X restore 11 140 pd storysquare;
 #N canvas 546 36 638 686 storysquare 0;
 #X obj 367 601 outlet;
 #X obj 449 602 outlet;
@@ -364,7 +368,8 @@
 1 0 1 0 1 0 0;
 #X obj 148 23 pianoroll pianoroll2 192 186 0 1 31 16 0 0 1 0 1 0 1
 0 1 0 1 0 1 0 1 0 1 0.2 0.933333 0.333333 0.9 0.433333 0.866667 0.5
-0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0 0;
+0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0.733333
+0;
 #X obj 368 480 makenote;
 #X obj 369 519 noteout;
 #X text 477 519 midi channel;
@@ -448,7 +453,6 @@
 #X msg 62 9 stop;
 #X msg 142 126 0;
 #X obj 8 -6 inlet;
-#X obj 142 79 >= 15;
 #X obj 20 39 metro;
 #X obj 20 93 t b b;
 #X obj 21 201 outlet;
@@ -457,22 +461,23 @@
 #X text 93 224 step time;
 #X obj 114 0 inlet;
 #X msg 92 56 500;
+#X obj 142 79 >= 16;
 #X connect 0 0 1 1;
 #X connect 1 0 0 0;
-#X connect 1 0 6 0;
-#X connect 1 0 9 0;
+#X connect 1 0 8 0;
+#X connect 1 0 14 0;
 #X connect 2 0 3 0;
 #X connect 2 0 4 0;
-#X connect 3 0 7 0;
+#X connect 3 0 6 0;
 #X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 2 0;
-#X connect 7 0 8 0;
-#X connect 8 0 1 0;
-#X connect 8 1 14 0;
-#X connect 13 0 14 0;
-#X connect 14 0 7 1;
-#X connect 14 0 10 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 1 0;
+#X connect 7 1 13 0;
+#X connect 12 0 13 0;
+#X connect 13 0 6 1;
+#X connect 13 0 9 0;
+#X connect 14 0 2 0;
 #X restore 9 26 pd oneShotClock;
 #X msg 85 -5 700;
 #X text 112 -5 ms;
@@ -520,6 +525,7 @@
 #X connect 30 0 9 0;
 #X connect 30 0 3 0;
 #X connect 30 0 2 0;
+#X connect 30 0 15 0;
 #X connect 30 1 20 3;
 #X connect 30 1 33 2;
 #X connect 31 0 30 1;
@@ -529,7 +535,7 @@
 #X connect 33 1 16 0;
 #X connect 36 0 6 2;
 #X coords 0 -1 1 1 240 112 1 10 508;
-#X restore 264 12 pd storysquare;
+#X restore 265 12 pd storysquare;
 #N canvas 546 36 638 686 storysquare 0;
 #X obj 367 601 outlet;
 #X obj 449 602 outlet;
@@ -541,7 +547,8 @@
 1 0 1 0 1 0 0;
 #X obj 148 23 pianoroll pianoroll2 192 186 0 1 31 16 0 0 1 0 1 0 1
 0 1 0 1 0 1 0 1 0 1 0.2 0.933333 0.333333 0.9 0.433333 0.866667 0.5
-0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0 0;
+0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0.733333
+0;
 #X obj 368 480 makenote;
 #X obj 369 519 noteout;
 #X text 477 519 midi channel;
@@ -625,7 +632,6 @@
 #X msg 62 9 stop;
 #X msg 142 126 0;
 #X obj 8 -6 inlet;
-#X obj 142 79 >= 15;
 #X obj 20 39 metro;
 #X obj 20 93 t b b;
 #X obj 21 201 outlet;
@@ -634,22 +640,23 @@
 #X text 93 224 step time;
 #X obj 114 0 inlet;
 #X msg 92 56 500;
+#X obj 142 79 >= 16;
 #X connect 0 0 1 1;
 #X connect 1 0 0 0;
-#X connect 1 0 6 0;
-#X connect 1 0 9 0;
+#X connect 1 0 8 0;
+#X connect 1 0 14 0;
 #X connect 2 0 3 0;
 #X connect 2 0 4 0;
-#X connect 3 0 7 0;
+#X connect 3 0 6 0;
 #X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 2 0;
-#X connect 7 0 8 0;
-#X connect 8 0 1 0;
-#X connect 8 1 14 0;
-#X connect 13 0 14 0;
-#X connect 14 0 7 1;
-#X connect 14 0 10 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 1 0;
+#X connect 7 1 13 0;
+#X connect 12 0 13 0;
+#X connect 13 0 6 1;
+#X connect 13 0 9 0;
+#X connect 14 0 2 0;
 #X restore 9 26 pd oneShotClock;
 #X msg 85 -5 700;
 #X text 112 -5 ms;
@@ -697,6 +704,7 @@
 #X connect 30 0 9 0;
 #X connect 30 0 3 0;
 #X connect 30 0 2 0;
+#X connect 30 0 15 0;
 #X connect 30 1 20 3;
 #X connect 30 1 33 2;
 #X connect 31 0 30 1;
@@ -706,7 +714,7 @@
 #X connect 33 1 16 0;
 #X connect 36 0 6 2;
 #X coords 0 -1 1 1 240 112 1 10 508;
-#X restore 264 137 pd storysquare;
+#X restore 265 140 pd storysquare;
 #N canvas 546 36 638 686 storysquare 0;
 #X obj 367 601 outlet;
 #X obj 449 602 outlet;
@@ -718,7 +726,8 @@
 1 0 1 0 1 0 0;
 #X obj 148 23 pianoroll pianoroll2 192 186 0 1 31 16 0 0 1 0 1 0 1
 0 1 0 1 0 1 0 1 0 1 0.2 0.933333 0.333333 0.9 0.433333 0.866667 0.5
-0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0 0;
+0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0.733333
+0;
 #X obj 368 480 makenote;
 #X obj 369 519 noteout;
 #X text 477 519 midi channel;
@@ -802,7 +811,6 @@
 #X msg 62 9 stop;
 #X msg 142 126 0;
 #X obj 8 -6 inlet;
-#X obj 142 79 >= 15;
 #X obj 20 39 metro;
 #X obj 20 93 t b b;
 #X obj 21 201 outlet;
@@ -811,22 +819,23 @@
 #X text 93 224 step time;
 #X obj 114 0 inlet;
 #X msg 92 56 500;
+#X obj 142 79 >= 16;
 #X connect 0 0 1 1;
 #X connect 1 0 0 0;
-#X connect 1 0 6 0;
-#X connect 1 0 9 0;
+#X connect 1 0 8 0;
+#X connect 1 0 14 0;
 #X connect 2 0 3 0;
 #X connect 2 0 4 0;
-#X connect 3 0 7 0;
+#X connect 3 0 6 0;
 #X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 2 0;
-#X connect 7 0 8 0;
-#X connect 8 0 1 0;
-#X connect 8 1 14 0;
-#X connect 13 0 14 0;
-#X connect 14 0 7 1;
-#X connect 14 0 10 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 1 0;
+#X connect 7 1 13 0;
+#X connect 12 0 13 0;
+#X connect 13 0 6 1;
+#X connect 13 0 9 0;
+#X connect 14 0 2 0;
 #X restore 9 26 pd oneShotClock;
 #X msg 85 -5 700;
 #X text 112 -5 ms;
@@ -874,6 +883,7 @@
 #X connect 30 0 9 0;
 #X connect 30 0 3 0;
 #X connect 30 0 2 0;
+#X connect 30 0 15 0;
 #X connect 30 1 20 3;
 #X connect 30 1 33 2;
 #X connect 31 0 30 1;
@@ -883,7 +893,7 @@
 #X connect 33 1 16 0;
 #X connect 36 0 6 2;
 #X coords 0 -1 1 1 240 112 1 10 508;
-#X restore 11 262 pd storysquare;
+#X restore 12 267 pd storysquare;
 #N canvas 546 36 638 686 storysquare 0;
 #X obj 367 601 outlet;
 #X obj 449 602 outlet;
@@ -895,7 +905,8 @@
 1 0 1 0 1 0 0;
 #X obj 148 23 pianoroll pianoroll2 192 186 0 1 31 16 0 0 1 0 1 0 1
 0 1 0 1 0 1 0 1 0 1 0.2 0.933333 0.333333 0.9 0.433333 0.866667 0.5
-0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0 0;
+0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0.733333
+0;
 #X obj 368 480 makenote;
 #X obj 369 519 noteout;
 #X text 477 519 midi channel;
@@ -979,7 +990,6 @@
 #X msg 62 9 stop;
 #X msg 142 126 0;
 #X obj 8 -6 inlet;
-#X obj 142 79 >= 15;
 #X obj 20 39 metro;
 #X obj 20 93 t b b;
 #X obj 21 201 outlet;
@@ -988,22 +998,23 @@
 #X text 93 224 step time;
 #X obj 114 0 inlet;
 #X msg 92 56 500;
+#X obj 142 79 >= 16;
 #X connect 0 0 1 1;
 #X connect 1 0 0 0;
-#X connect 1 0 6 0;
-#X connect 1 0 9 0;
+#X connect 1 0 8 0;
+#X connect 1 0 14 0;
 #X connect 2 0 3 0;
 #X connect 2 0 4 0;
-#X connect 3 0 7 0;
+#X connect 3 0 6 0;
 #X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 2 0;
-#X connect 7 0 8 0;
-#X connect 8 0 1 0;
-#X connect 8 1 14 0;
-#X connect 13 0 14 0;
-#X connect 14 0 7 1;
-#X connect 14 0 10 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 1 0;
+#X connect 7 1 13 0;
+#X connect 12 0 13 0;
+#X connect 13 0 6 1;
+#X connect 13 0 9 0;
+#X connect 14 0 2 0;
 #X restore 9 26 pd oneShotClock;
 #X msg 85 -5 700;
 #X text 112 -5 ms;
@@ -1051,6 +1062,7 @@
 #X connect 30 0 9 0;
 #X connect 30 0 3 0;
 #X connect 30 0 2 0;
+#X connect 30 0 15 0;
 #X connect 30 1 20 3;
 #X connect 30 1 33 2;
 #X connect 31 0 30 1;
@@ -1060,7 +1072,7 @@
 #X connect 33 1 16 0;
 #X connect 36 0 6 2;
 #X coords 0 -1 1 1 240 112 1 10 508;
-#X restore 11 387 pd storysquare;
+#X restore 12 395 pd storysquare;
 #N canvas 546 36 638 686 storysquare 0;
 #X obj 367 601 outlet;
 #X obj 449 602 outlet;
@@ -1072,7 +1084,8 @@
 1 0 1 0 1 0 0;
 #X obj 148 23 pianoroll pianoroll2 192 186 0 1 31 16 0 0 1 0 1 0 1
 0 1 0 1 0 1 0 1 0 1 0.2 0.933333 0.333333 0.9 0.433333 0.866667 0.5
-0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0 0;
+0.866667 0.566667 0.9 0.633333 0.966667 0.666667 1 0.733333 1 0.733333
+0;
 #X obj 368 480 makenote;
 #X obj 369 519 noteout;
 #X text 477 519 midi channel;
@@ -1156,7 +1169,6 @@
 #X msg 62 9 stop;
 #X msg 142 126 0;
 #X obj 8 -6 inlet;
-#X obj 142 79 >= 15;
 #X obj 20 39 metro;
 #X obj 20 93 t b b;
 #X obj 21 201 outlet;
@@ -1165,22 +1177,23 @@
 #X text 93 224 step time;
 #X obj 114 0 inlet;
 #X msg 92 56 500;
+#X obj 142 79 >= 16;
 #X connect 0 0 1 1;
 #X connect 1 0 0 0;
-#X connect 1 0 6 0;
-#X connect 1 0 9 0;
+#X connect 1 0 8 0;
+#X connect 1 0 14 0;
 #X connect 2 0 3 0;
 #X connect 2 0 4 0;
-#X connect 3 0 7 0;
+#X connect 3 0 6 0;
 #X connect 4 0 1 0;
-#X connect 5 0 7 0;
-#X connect 6 0 2 0;
-#X connect 7 0 8 0;
-#X connect 8 0 1 0;
-#X connect 8 1 14 0;
-#X connect 13 0 14 0;
-#X connect 14 0 7 1;
-#X connect 14 0 10 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 1 0;
+#X connect 7 1 13 0;
+#X connect 12 0 13 0;
+#X connect 13 0 6 1;
+#X connect 13 0 9 0;
+#X connect 14 0 2 0;
 #X restore 9 26 pd oneShotClock;
 #X msg 85 -5 700;
 #X text 112 -5 ms;
@@ -1228,6 +1241,7 @@
 #X connect 30 0 9 0;
 #X connect 30 0 3 0;
 #X connect 30 0 2 0;
+#X connect 30 0 15 0;
 #X connect 30 1 20 3;
 #X connect 30 1 33 2;
 #X connect 31 0 30 1;
@@ -1237,4 +1251,4 @@
 #X connect 33 1 16 0;
 #X connect 36 0 6 2;
 #X coords 0 -1 1 1 240 112 1 10 508;
-#X restore 264 262 pd storysquare;
+#X restore 266 267 pd storysquare;
