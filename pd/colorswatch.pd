@@ -1,0 +1,46 @@
+#N canvas 831 103 389 535 10;
+#X msg 103 416 color \$1;
+#X obj 171 235 t b f;
+#X obj 105 293 +;
+#X obj 105 318 t b f;
+#X obj 105 349 +;
+#X obj 47 246 * -65536;
+#X obj 105 213 * -256;
+#X obj 171 213 * -1;
+#X obj 105 380 - 1;
+#X obj 30 30 cnv 15 126 40 \$0-colorCanvas-s \$0-colorCanvas-r empty
+20 12 0 14 -1 -262144 0;
+#X obj 177 36 inlet;
+#X obj 90 134 unpack 0 0 0;
+#X obj 94 172 int;
+#X obj 126 175 int;
+#X obj 153 178 int;
+#X obj 30 74 nbx 3 20 -1e+37 1e+37 0 0 empty empty red 0 28 0 10 -261234
+-1 -1 0 256;
+#X obj 73 74 nbx 3 20 -1e+37 1e+37 0 0 empty empty green 0 28 0 10
+-204786 -1 -1 0 256;
+#X obj 117 74 nbx 3 20 -1e+37 1e+37 0 0 empty empty blue 0 28 0 10
+-203904 -1 -1 0 256;
+#X obj 101 453 s \$0-colorCanvas-r;
+#X connect 0 0 18 0;
+#X connect 1 0 2 0;
+#X connect 1 1 2 1;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 3 1 4 1;
+#X connect 4 0 8 0;
+#X connect 5 0 4 0;
+#X connect 6 0 2 0;
+#X connect 7 0 1 0;
+#X connect 8 0 0 0;
+#X connect 10 0 11 0;
+#X connect 11 0 12 0;
+#X connect 11 1 13 0;
+#X connect 11 2 14 0;
+#X connect 12 0 5 0;
+#X connect 12 0 15 0;
+#X connect 13 0 6 0;
+#X connect 13 0 16 0;
+#X connect 14 0 7 0;
+#X connect 14 0 17 0;
+#X coords 0 -1 1 1 134 84 2 26 26;
