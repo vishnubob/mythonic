@@ -1,4 +1,4 @@
-#N canvas 434 133 450 300 10;
+#N canvas 798 169 450 300 10;
 #X obj 31 198 instrument-mode-prototype;
 #X msg 687 425 devicename /dev/ttyS1;
 #X msg 54 12 devicename /dev/pts/4;
