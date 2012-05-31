@@ -75,7 +75,7 @@ class HardwareChain(object):
         self.length = length
         self.write_delay = write_delay
         self.light_frames = [FrameLights(addr, self) for addr in range(self.length)]
-        self.touch_frames = [FrameTouch(addr, 8, self) for addr in range(self.length)]
+        self.touch_frames = [FrameTouch(addr, 10, self) for addr in range(self.length)]
         self.frame_idx = 0
 
     def set_light(self, address, idx, val):
@@ -159,6 +159,10 @@ class VirtualSerialPort(object):
             self.port.write(data)
 
 port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
-hc = HardwareChain(port, 1, .001)
+hc = HardwareChain(port, 2, .001)
+hc.beacon(0)
+time.sleep(.5)
+hc.beacon(1)
+time.sleep(.5)
 vsp = VirtualSerialPort(sys.argv[2], hc)
 vsp.run()

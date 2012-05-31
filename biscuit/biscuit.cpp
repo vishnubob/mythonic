@@ -269,8 +269,9 @@ void loop(void)
                 } else
                 if (serial_command == TOUCH_COMMAND)
                 {
+                    uint8_t val = get_touch_sample();
                     enable_serial_output();
-                    Serial.write(get_touch_sample());
+                    Serial.write(val);
                     disable_serial_output();
                     serial_state = WAIT_FOR_COMMAND_STATE;
                 } else
