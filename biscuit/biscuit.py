@@ -132,6 +132,10 @@ class VirtualSerialPort(object):
         self.port = serial.Serial(port, baudrate=57600)
         self.hc = hc
 
+    def run(self):
+        while 1:
+            self.cycle()
+
     def cycle(self):
         # check to see if there is any input
         if self.port.inWaiting():
@@ -142,7 +146,7 @@ class VirtualSerialPort(object):
         cmd = self.port.read(1)
         if cmd == 'L':
             data = self.port.read(6 * self.hc.length)
-            data = [chr(x) for x in data]
+            data = [ord(x) for x in data]
             for addr in range(self.hc.length):
                 for light in range(6):
                     self.hc.set_light(addr, light, data[addr * 6 + light])
@@ -151,33 +155,10 @@ class VirtualSerialPort(object):
             data = ''
             for frame in avg:
                 for val in frame:
-                    data += chr(val)
+                    data += chr(int(val))
             self.port.write(data)
 
 port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
 hc = HardwareChain(port, 1, .001)
-
-for x in range(1):
-    hc.beacon(0)
-    time.sleep(.5)
-
-def up_down():
-    for x in range(0xff):
-        hc.set_light_value(0, x)
-        hc.refresh(0)
-        tavg.think()
-        time.sleep(.01)
-    for x in range(0xff, 0, -1):
-        hc.set_light_value(0, x)
-        hc.refresh(0)
-        tavg.think()
-        time.sleep(.01)
-
-while 1:
-    hc.refresh()
-    avg = hc.get_touch_averages()
-    val = int(avg[0][-1])
-    if val > 30:
-        hc.set_light(0, 0, hc.get_light(0, 0) + 1)
-    else:
-        hc.set_light(0, 0, hc.get_light(0, 0) - 1)
+vsp = VirtualSerialPort(sys.argv[2], hc)
+vsp.run()
