@@ -50,6 +50,7 @@ class FrameManager(object):
         try:
             while 1:
                 self.touch_update()
+                self.pd.Update()
         except:
             self.pd.Exit()
             raise
