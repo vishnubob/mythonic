@@ -4,57 +4,66 @@ import sys
 import serial
 import time
 
-port = serial.Serial(sys.argv[1], 250000)
+class HardwareChain(object):
+    def __init__(self, port, board_count, write_delay=.001):
+        self.port = port
+        self.board_count = board_count
+        self.touch_index = 0
+        self.touch_buffer = [0] * self.board_count
+        self.light_buffer = [0] * (6 * self.board_count)
+        self.write_delay = write_delay
 
-def send(data):
-    for ch in data:
-        port.write(ch)
-        port.flush()
+    def set_light_value(self, idx, val):
+        val >>= 1
+        self.light_buffer[idx] = min(0x7f, max(val, 0))
 
-def recv():
-    if not port.inWaiting():
-        return
-    ch = port.read(1)
-    if ch == 'T':
+    def beacon(self, addr):
+        cmd = 0x80 | ord('B')
+        port.write(chr(cmd))
+        time.sleep(self.write_delay)
+        port.write(chr(addr))
+
+    def refresh(self, addr):
+        cmd = 0x80 | ord('L')
+        port.write(chr(cmd))
+        time.sleep(self.write_delay)
+        port.write(chr(addr))
+        time.sleep(self.write_delay)
+        print self.light_buffer
+        for val in self.light_buffer:
+            port.write(chr(val))
+            time.sleep(self.write_delay)
+
+    def touch(self, addr):
+        cmd = 0x80 | ord('T')
+        port.write(chr(cmd))
+        time.sleep(self.write_delay)
+        port.write(chr(addr))
+        # XXX: timeout
         val = port.read(1)
-        print "GOT T", ord(val)
-    else:
-        print "unk", ch, ord(ch)
+        time.sleep(self.write_delay)
+        return val
 
-def pulse():
-    for ch in range(6):
-        if ch == 1:
-            continue
-        for x in range(0xff):
-            data = [0, 0, 0, 0, 0, 0]
-            data[ch] = x
-            final = []
-            for box in range(7):
-                final.extend(data) 
-            cmd = 'L' + str.join('', map(chr, final))
-            print x, len(cmd)
-            port.write(cmd)
-            port.flush()
-            time.sleep(.01)
-        for x in range(0xff, 0, -1):
-            data = [0, 0, 0, 0, 0, 0]
-            data[ch] = x
-            final = []
-            for box in range(7):
-                final.extend(data) 
-            cmd = 'L' + str.join('', map(chr, final))
-            print x, len(cmd)
-            port.write(cmd)
-            port.flush()
-            time.sleep(.01)
+class TouchAverage(object):
+    def __init__(self, hc):
+        self.hc = hc
 
-def ping():
-    for x in range(7):
-        raw_input("next %s>" % (x + 1))
-        cmd = 'R' + chr(x)
-        port.write(cmd)
+
+port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
+hc = HardwareChain(port, 1, .001)
+
+for x in range(5):
+    hc.beacon(0)
+    time.sleep(.5)
 
 while 1:
-    pulse()
-#ping()
-
+    for x in range(0xff):
+        hc.set_light_value(0, x)
+        hc.refresh(0)
+        print ord(hc.touch(0))
+        time.sleep(.01)
+    for x in range(0xff, 0, -1):
+        hc.set_light_value(0, x)
+        hc.refresh(0)
+        print ord(hc.touch(0))
+        time.sleep(.01)
