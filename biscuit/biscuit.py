@@ -35,19 +35,57 @@ class FrameLights(object):
         self.flip()
 
 class Average(list):
-    def __init__(self, size):
+    def __init__(self, size, fresh_ttl=60):
         self.size = size
         avglist = [0] * self.size
         self.idx = 0
+        self.disabled = False
+        self.fresh_ttl = fresh_ttl
+        self.last_trigger = 0
         super(Average, self).__init__(avglist)
+
+    def normalize(self, threshold=20):
+        avg = self.average()
+        self.threshold = avg + threshold
+        print "%s new threshold set to %.2f" % (id(self), self.threshold)
     
     def push(self, val): 
         self[self.idx] = ord(val)
         self.idx = (self.idx + 1) % self.size
 
-    def average(self):
-        return sum(self) / float(self.size)
+    def disable(self, timeout=5):
+        self.disabled = True
+        self.disabled_timeout = time.time() + timeout
 
+    def is_disabled(self):
+        if self.disabled and (time.time() > self.disabled_timeout):
+            self.disabled = False
+        return self.disabled
+
+    def average(self, cheat_flag=False):
+        data = self[:]
+        if cheat_flag:
+            del data[self.idx]
+        return sum(data) / float(self.size)
+
+    def peek(self):
+        last_idx = (self.idx - 1) % self.size
+        return self[last_idx]
+
+    def trigger(self, disable=5):
+        self.last_trigger += 1
+        if self.is_disabled():
+            return False
+        if self.last_trigger > self.fresh_ttl:
+            self.last_trigger = 0
+            self.normalize()
+        if self.average() < self.threshold:
+            return False
+        if disable:
+            self.disable(disable)
+        self.last_trigger = 0
+        return True
+            
 class FrameTouch(object):
     def __init__(self, address, size, hc):
         self.address = address
@@ -65,9 +103,24 @@ class FrameTouch(object):
         #subavg.append(sum(subavg) / float(len(subavg)))
         return subavg
 
+    def peek(self):
+        return [obj.peek() for obj in self.order]
+
+    def normalize(self):
+        return [obj.normalize() for obj in self.order]
+
     def go(self):
         self.order[self.idx].push(self.hc.get_touch_data(self.address))
         self.idx = (self.idx + 1) % 4
+
+    def trigger(self):
+        res = []
+        for obj in self.order:
+            if obj.is_disabled():
+                res = [False] * 4
+                break
+            res.append(obj.trigger())
+        return res
 
 class HardwareChain(object):
     def __init__(self, port, length, write_delay=.001):
@@ -75,7 +128,7 @@ class HardwareChain(object):
         self.length = length
         self.write_delay = write_delay
         self.light_frames = [FrameLights(addr, self) for addr in range(self.length)]
-        self.touch_frames = [FrameTouch(addr, 10, self) for addr in range(self.length)]
+        self.touch_frames = [FrameTouch(addr, 20, self) for addr in range(self.length)]
         self.frame_idx = 0
 
     def set_light(self, address, idx, val):
@@ -86,6 +139,15 @@ class HardwareChain(object):
 
     def get_touch_averages(self):
         return [obj.average() for obj in self.touch_frames]
+
+    def get_touch_triggers(self):
+        return [obj.trigger() for obj in self.touch_frames]
+
+    def get_touch_peeks(self):
+        return [obj.peek() for obj in self.touch_frames]
+
+    def normalize_touch(self):
+        return [obj.normalize() for obj in self.touch_frames]
 
     def beacon(self, addr):
         cmd = 0x80 | ord('B')
@@ -127,36 +189,35 @@ class HardwareChain(object):
         time.sleep(self.write_delay)
         return val
 
-class VirtualSerialPort(object):
-    def __init__(self, port, hc):
-        self.port = serial.Serial(port, baudrate=57600)
+class Manager(object):
+    def __init__(self, hc):
         self.hc = hc
 
+    def boot(self, cycles=100):
+        # run the system for a while
+        # fill the averages
+        print "Booting"
+        for x in range(cycles):
+            self.cycle()
+        self.hc.normalize_touch()
+        print "BOOTED"
+
     def run(self):
+        self.boot()
         while 1:
             self.cycle()
+            array = self.hc.get_touch_triggers()
+            for vals in array:
+                for val in vals:
+                    if val:
+                        print array
+                        print self.hc.get_touch_averages()
+                        print self.hc.get_touch_peeks()
+                        print
 
     def cycle(self):
         # check to see if there is any input
-        if self.port.inWaiting():
-            self.handle_input()
         self.hc.refresh()
-
-    def handle_input(self):
-        cmd = self.port.read(1)
-        if cmd == 'L':
-            data = self.port.read(6 * self.hc.length)
-            data = [ord(x) for x in data]
-            for addr in range(self.hc.length):
-                for light in range(6):
-                    self.hc.set_light(addr, light, data[addr * 6 + light])
-        elif cmd == 'T':
-            avg = self.hc.get_touch_averages()
-            data = ''
-            for frame in avg:
-                for val in frame:
-                    data += chr(int(val))
-            self.port.write(data)
 
 port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
 hc = HardwareChain(port, 2, .001)
@@ -164,5 +225,5 @@ hc.beacon(0)
 time.sleep(.5)
 hc.beacon(1)
 time.sleep(.5)
-vsp = VirtualSerialPort(sys.argv[2], hc)
-vsp.run()
+man = Manager(hc)
+man.run()

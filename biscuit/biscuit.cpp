@@ -127,7 +127,7 @@ uint8_t         light_buffer[LIGHT_MSG];
  ** Touch
  ******************************************************************************/
 
-#define TOUCH_TIME 5
+#define TOUCH_TIME 3
 
 CapSense tch1 = CapSense(A0, A1);
 CapSense tch2 = CapSense(A0, A2);
