@@ -1,26 +1,19 @@
 #!/usr/bin/env python
 
+from mythonic import SSManager
 import sys
 import serial
-from mythonic import *
-from wired import *
+import time
 
 def main():
-    if len(sys.argv) != 2:
-        script_name = sys.argv[0]
-        print "Usage:   {0} <tty>".format(sys.argv[0])
-        print "Example: {0} /dev/ttyUSB0".format(sys.argv[0])
-        exit(2)
+    port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
+    hc = HardwareChain(port, 2, .001)
+    hc.beacon(0)
+    time.sleep(.5)
+    hc.beacon(1)
+    time.sleep(.5)
+    man = SSManager(hc)
+    man.run()
 
-    tty = sys.argv[1]
-    bus = serial.Serial(tty, 250000)
-
-    picture_frames = [WiredPictureFrame(i) for i in range(7)]
-    mediator = MythonicMediator(picture_frames, bus)
-
-    while True:
-        time.sleep(0.1)
-        mediator.think()
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
