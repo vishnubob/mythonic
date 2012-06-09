@@ -4,16 +4,16 @@
 #include <math.h>
 #include <util/delay.h>
 #include <avr/wdt.h> 
-
-#define GRN PD4
-#define RED PD2
+#include "arduino/BiscuitSerial.h"
 
 #define BOARD_ADDR          0
-#define PROMPT_ENABLE       1
 #define LED_COUNT           6
+#define TOUCH_COUNT         4
 #define DE485_PIN           7
-#define TOUCH_INTERVAL      25
 #define RE485_PIN           A5
+#define GRN                 PD4
+#define RED                 PD2
+#define FRAME_COUNT         1
 
 // Helper macros for frobbing bits
 #define bitset(var,bitno) ((var) |= (1 << (bitno)))
@@ -117,93 +117,46 @@ private:
  ** Globals
  ******************************************************************************/
 
-#define LIGHT_MSG (LED_COUNT * 7)
-#define TOUCH_MSG 1
+#define LIGHT_MSG (LED_COUNT * FRAME_COUNT)
 
 Pin             leds[LED_COUNT];
 uint8_t         board_addr;
 uint8_t         light_buffer[LIGHT_MSG];
 
+/******************************************************************************
+ ** Touch
+ ******************************************************************************/
 
-/* touch */
+#define TOUCH_TIME 3
 
-class Average
+CapSense tch1 = CapSense(A0, A1);
+CapSense tch2 = CapSense(A0, A2);
+CapSense tch3 = CapSense(A0, A3);
+CapSense tch4 = CapSense(A0, A4);
+
+uint8_t get_touch_sample()
 {
-public:
-    Average(uint8_t sz) :
-        _sz(8), _idx(0)
+    static int touch_sensor = 0;
+    uint16_t val;
+    switch(touch_sensor)
     {
-        _data = (long*)malloc(_sz * sizeof(long));
-        memset(_data, 0, _sz * sizeof(long));
+        case 0:
+            val = tch1.capSense(TOUCH_TIME);
+            break;
+        case 1:
+            val = tch2.capSense(TOUCH_TIME);
+            break;
+        case 2:
+            val = tch3.capSense(TOUCH_TIME);
+            break;
+        case 3:
+            val = tch4.capSense(TOUCH_TIME);
+            break;
+        default:
+            val = 0;
     }
-
-    void push(long val)
-    {
-        _data[_idx] = val;
-        _idx = (_idx + 1) % _sz;
-    }
-
-    long pull()
-    {
-        long sum = 0;
-        for(uint8_t sum_idx = 0; sum_idx < _sz; ++sum_idx)
-        {
-            sum += _data[sum_idx];
-        }
-        return (sum >> 3);
-    }
-
-    void set(long offset)
-    {
-        _level = pull() + offset;
-    }
-
-    bool trigger()
-    {
-        return (pull() > _level);
-    }
-
-private:
-    uint8_t _sz;
-    uint8_t _idx;
-    long* _data;
-    long _level;
-};
-
-CapSense   tch1 = CapSense(A0, A1);
-CapSense   tch2 = CapSense(A0, A2);
-CapSense   tch3 = CapSense(A0, A3);
-CapSense   tch4 = CapSense(A0, A4);
-
-Average    avg_tch1 = Average(8);
-Average    avg_tch2 = Average(8);
-Average    avg_tch3 = Average(8);
-Average    avg_tch4 = Average(8);
-
-void sample_touch_sensors()
-{
-    avg_tch1.push(tch1.capSense(5));
-    avg_tch2.push(tch2.capSense(5));
-    avg_tch3.push(tch3.capSense(5));
-    avg_tch4.push(tch4.capSense(5));
-}
-
-bool trigger_touch_sensors()
-{
-    return (avg_tch1.trigger() || avg_tch2.trigger() || avg_tch3.trigger() || avg_tch4.trigger());
-}
-
-void normalize_touch_sensors()
-{
-    for(int x = 0; x < 10; ++x)
-    {
-        sample_touch_sensors();
-        delay(100);
-    }
-    avg_tch1.set(500);
-    avg_tch2.set(500);
-    avg_tch3.set(500);
-    avg_tch4.set(500);
+    touch_sensor = (touch_sensor + 1) % TOUCH_COUNT;
+    return min(0x7f, val >> 1);
 }
 
 /******************************************************************************
@@ -213,7 +166,7 @@ void normalize_touch_sensors()
 void setup()
 {
     // pins
-    Serial.begin(250000);
+    Serial.begin(1000000);
     pinMode(GRN, OUTPUT);
     pinMode(RED, OUTPUT);
     pinMode(DE485_PIN, OUTPUT);
@@ -227,7 +180,7 @@ void setup()
     }
     
     board_addr = read_byte(BOARD_ADDR);
-    //board_addr = 4;
+    /* blink out our board address */
     for (uint8_t addr = 0; addr <= board_addr; ++addr)
     {
         digitalWrite(GRN, HIGH);
@@ -237,82 +190,111 @@ void setup()
     }
         
     memset(light_buffer, 0, LIGHT_MSG * sizeof(char));
-    normalize_touch_sensors();
     digitalWrite(GRN, HIGH);
-}
-
-
-/******************************************************************************
- ** Serial
- ******************************************************************************/
-
-void poll_input(void)
-{
-    if (Serial.available()) 
-    {
-        char ch = Serial.read();
-        if (ch == 'L')
-        {
-            for(uint8_t idx = 0; idx < LIGHT_MSG; ++idx)
-            {
-                while (!Serial.available()) {}
-                light_buffer[idx] = Serial.read();
-                //Serial.println(light_buffer[idx], DEC);
-            }
-        } else
-        if (ch == 'T')
-        {
-            // toss this
-            while (!Serial.available()) {}
-            Serial.read();
-        } else
-        if (ch == 'R')
-        {
-            while (!Serial.available()) {}
-            uint8_t addr = Serial.read();
-            if (addr == board_addr)
-            {
-                digitalWrite(RED, !digitalRead(RED));
-            }
-        } else
-        if (ch == 'Z')
-        {
-            for(uint8_t idx = 0; idx < LIGHT_MSG; ++idx)
-            {
-                light_buffer[idx] = 0;
-            }
-        }
-    }
 }
 
 /******************************************************************************
  ** Main loop
  ******************************************************************************/
 
-void loop()
+#define WAIT_FOR_COMMAND_STATE 0
+#define COMMAND_STATE 1
+#define COMMAND_ADDRESS_STATE 2
+#define LIGHT_RECV_STATE 3
+#define LIGHT_RECV_STATE_ACTUAL 4
+
+#define BEACON_COMMAND 1
+#define TOUCH_COMMAND 2
+
+uint8_t light_buffer_idx = 0;
+uint8_t serial_state = 0;
+uint8_t serial_command = 0;
+uint8_t command_address = 0;
+
+void loop(void)
 {
-    static int interval = 0;
+    if (!Serial.available()) 
+        return;
 
-    poll_input();
-    for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
+    uint16_t lowhi = Serial.read();
+    char ch = lowhi & 0xFF;
+    char flags = (lowhi >> 8) & 0xFF;
+
+    if (flags & PARITY_ERROR)
     {
-        leds[ch].set(light_buffer[ch + (LED_COUNT * board_addr)]);
-        //leds[ch].set(light_buffer[ch]);
+        serial_state = WAIT_FOR_COMMAND_STATE;
+        digitalWrite(RED, HIGH);
+    } else
+    if (ch & 0x80)
+    {
+        serial_state = COMMAND_STATE;
+        ch = ch & 0x7F;
     }
 
-    /*
-    interval = (interval + 1) % TOUCH_INTERVAL;
-    if (interval == 0)
+    switch(serial_state)
     {
-        sample_touch_sensors();
-        if (trigger_touch_sensors())
-        {
-            enable_serial_output();
-            Serial.write('T');
-            Serial.flush();
-            Serial.write(board_addr);
-            disable_serial_output();
-        }
+        case COMMAND_STATE:
+            digitalWrite(RED, LOW);
+            if (ch == 'L')
+            {
+                serial_command = LIGHT_RECV_STATE;
+                serial_state = COMMAND_ADDRESS_STATE;
+                light_buffer_idx = 0;
+            } else
+            if (ch == 'B')
+            {
+                serial_command = BEACON_COMMAND;
+                serial_state = COMMAND_ADDRESS_STATE;
+            } else
+            if (ch == 'T')
+            {
+                serial_command = TOUCH_COMMAND;
+                serial_state = COMMAND_ADDRESS_STATE;
+            } else
+            {
+                /* ruh-roh */
+                serial_state = WAIT_FOR_COMMAND_STATE;
+            }
+            break;
+        case COMMAND_ADDRESS_STATE:
+            command_address = ch;
+            if (command_address == board_addr)
+            {
+                if (serial_command == BEACON_COMMAND)
+                {
+                    digitalWrite(RED, HIGH);
+                    delay(300);
+                    digitalWrite(RED, LOW);
+                    serial_state = WAIT_FOR_COMMAND_STATE;
+                } else
+                if (serial_command == TOUCH_COMMAND)
+                {
+                    uint8_t val = get_touch_sample();
+                    enable_serial_output();
+                    Serial.write(val);
+                    disable_serial_output();
+                    serial_state = WAIT_FOR_COMMAND_STATE;
+                } else
+                if (serial_command == LIGHT_RECV_STATE)
+                {
+                    light_buffer_idx = 0;
+                    serial_state = LIGHT_RECV_STATE_ACTUAL;
+                }
+            }
+            serial_command = 0;
+            break;
+        case LIGHT_RECV_STATE_ACTUAL:
+            light_buffer[light_buffer_idx++] = ch;
+            if (light_buffer_idx >= LED_COUNT)
+            {
+                for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
+                {
+                    leds[ch].set(light_buffer[ch]);
+                }
+                serial_state = WAIT_FOR_COMMAND_STATE;
+            }
+            break;
     }
-    */
+
 }
+

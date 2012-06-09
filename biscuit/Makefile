@@ -13,7 +13,7 @@ F_CPU=16000000
 # accept the same MCU name as avr-gcc (for example
 # for ATmega8s, avr-gcc expects 'atmega8' and 
 # avrdude requires 'm8')
-PROGRAMMER_MCU=m328
+PROGRAMMER_MCU=m328p
 
 # Name of our project
 # (use a single word, e.g. 'myproject')
@@ -26,7 +26,6 @@ PROJECTNAME=biscuit
 # (NOT .s !!!) for assembly source code files.
 PRJSRC=arduino/CDC.cpp \
 arduino/HID.cpp \
-arduino/HardwareSerial.cpp \
 arduino/IPAddress.cpp \
 arduino/Print.cpp \
 arduino/Stream.cpp \
@@ -44,6 +43,7 @@ arduino/wiring_pulse.c \
 arduino/wiring_shift.c \
 arduino/EEPROM.c \
 CapSense/CapSense.cpp \
+arduino/BiscuitSerial.cpp \
 biscuit.cpp
 
 # additional includes (e.g. -I/path/to/mydir)
@@ -76,7 +76,8 @@ AVRDUDE_PROGRAMMERID=avrispv2
 # port--serial or parallel port to which your 
 # hardware programmer is attached
 #
-AVRDUDE_PORT=/dev/ttyACM0
+#AVRDUDE_PORT=/dev/ttyACM0
+AVRDUDE_PORT=/dev/tty.usbmodem00035541
 
 
 ####################################################
@@ -198,6 +199,7 @@ upload: hex
 writeflash: hex
 	$(AVRDUDE) -c $(AVRDUDE_PROGRAMMERID)   \
 	 -p $(PROGRAMMER_MCU) -P $(AVRDUDE_PORT) -e        \
+	 -F \
 	 -U flash:w:$(HEXROMTRG)
 
 install: writeflash
