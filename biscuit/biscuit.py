@@ -216,14 +216,19 @@ class Manager(object):
         self.boot()
         while 1:
             self.cycle()
-            array = self.hc.get_touch_triggers()
-            for vals in array:
-                for val in vals:
-                    if val:
-                        print array
-                        print self.hc.get_touch_averages()
-                        print self.hc.get_touch_peeks()
-                        print
+            self.think()
+
+    def think(self):
+        """
+        Implements business logic.
+        """
+        for vals in self.hc.get_touch_triggers():
+            for val in vals:
+                if val:
+                    print array
+                    print self.hc.get_touch_averages()
+                    print self.hc.get_touch_peeks()
+                    print
 
     def cycle(self):
         # check to see if there is any input
