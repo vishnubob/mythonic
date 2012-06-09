@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-from mythonic import SSManager
 import sys
 import serial
 import time
+
+from mythonic import SSManager
 
 def main():
     port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
