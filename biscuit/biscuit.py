@@ -234,6 +234,5 @@ class Manager(object):
         # check to see if there is any input
         self.hc.refresh()
 
-
 if __name__ == '__main__':
     main()
