@@ -1,10 +1,9 @@
 import colorsys
 
-# see mythonic.py for wired version
+from biscuit import FrameLights
+
 class PictureFrame(object):
     "A picture frame with lighting"
-
-    __slots__ = ["_red", "_green", "_blue", "_uv", "_white"]
 
     MAX_RED = 0xff 
     MIN_RED = 0x0
@@ -21,133 +20,48 @@ class PictureFrame(object):
     MAX_WHITE = 0xff
     MIN_WHITE = 0x0
 
-    def __init__(self):
-        self._red   = 0
-        self._green = 0
-        self._blue  = 0
-        self._uv    = 0
-        self._white = 0
+    def __init__(self, address, hc):
+       self.lights = FrameLights(address, hc)
 
     def get_red(self):
-        return self._red;
+        return self.lights.get_light(0)
     def set_red(self, intensity):
         if intensity > self.MAX_RED or intensity < self.MIN_RED:
-            raise ValueError("Exceeds maximum red intensity")
-        self._red = intensity
+            raise ValueError("red intensity " + str(intensity) + " is out of bounds")
+        self.lights.set_light(0, intensity)
     red = property(get_red, set_red)
 
     def get_green(self):
-        return self._green;
+        return self.lights.get_light(1)
     def set_green(self, intensity):
         if intensity > self.MAX_GREEN or intensity < self.MIN_GREEN:
-            raise ValueError("Exceeds maximum green intensity")
-        self._green = intensity
+            raise ValueError("green intensity " + str(intensity) + " is out of bounds")
+        self.lights.set_light(1, intensity)
     green = property(get_green, set_green)
 
     def get_blue(self):
-        return self._blue;
+        return self.lights.get_light(2)
     def set_blue(self, intensity):
         if intensity > self.MAX_BLUE or intensity < self.MIN_BLUE:
-            raise ValueError(str(intensity) + " exceeds maximum blue intensity")
-        self._blue = intensity
+            raise ValueError("blue intensity " + str(intensity) + " is out of bounds")
+        self.lights.set_light(2, intensity)
     blue = property(get_blue, set_blue)
 
     def get_uv(self):
-        return self._uv;
+        return self.lights.get_light(3)
     def set_uv(self, intensity):
         if intensity > self.MAX_UV or intensity < self.MIN_UV:
-            raise ValueError("Exceeds maximum UV intensity")
-        self._uv = intensity
+            raise ValueError("uv intensity " + str(intensity) + " is out of bounds")
+        self.lights.set_light(3, intensity)
     uv = property(get_uv, set_uv)
 
     def get_white(self):
-        return self._white;
+        return self.lights.get_light(4)
     def set_white(self, intensity):
         if intensity > self.MAX_WHITE or intensity < self.MIN_WHITE:
-            raise ValueError("Exceeds maximum white intensity")
-        self._white = intensity
+            raise ValueError("white intensity " + str(intensity) + " is out of bounds")
+        self.lights.set_light(4, intensity)
     white = property(get_white, set_white)
-
-    def increase_all(self, increase=1, ceiling=max(MAX_RED, MAX_GREEN, MAX_BLUE)):
-        return self.increase_red(increase, ceiling) and \
-            self.increase_green(increase, ceiling)  and \
-            self.increase_blue(increase, ceiling)   and \
-            self.increase_uv(increase, ceiling)     and \
-            self.increase_white(increase, ceiling)
-
-    def decrease_all(self, decrease=1, floor=min(MIN_RED, MIN_GREEN, MIN_BLUE)):
-        return self.decrease_red(decrease, floor) and \
-            self.decrease_green(decrease, floor)  and \
-            self.decrease_blue(decrease, floor)   and \
-            self.decrease_uv(decrease, floor)     and \
-            self.decrease_white(decrease, floor)
-
-    def increase_red(self, increase=1, ceiling=MAX_RED):
-        return self._increase_or_ceiling(self.get_red, self.set_red, increase, ceiling)
-    def decrease_red(self, decrease=1, floor=MIN_RED):
-        return self._decrease_or_floor(self.get_red, self.set_red, decrease, floor)
-
-    def increase_green(self, increase=1, ceiling=MAX_GREEN):
-        return self._increase_or_ceiling(self.get_green, self.set_green, increase, ceiling)
-    def decrease_green(self, decrease=1, floor=MIN_GREEN):
-        return self._decrease_or_floor(self.get_green, self.set_green, decrease, floor)
-
-    def increase_blue(self, increase=1, ceiling=MAX_BLUE):
-        return self._increase_or_ceiling(self.get_blue, self.set_blue, increase, ceiling)
-    def decrease_blue(self, decrease=1, floor=MIN_BLUE):
-        return self._decrease_or_floor(self.get_blue, self.set_blue, decrease, floor)
-
-    def increase_uv(self, increase=1, ceiling=MAX_UV):
-        return self._increase_or_ceiling(self.get_uv, self.set_uv, increase, ceiling)
-    def decrease_uv(self, decrease=1, floor=MIN_UV):
-        return self._decrease_or_floor(self.get_uv, self.set_uv, decrease, floor)
-
-    def increase_white(self, increase=1, ceiling=MAX_WHITE):
-        return self._increase_or_ceiling(self.get_white, self.set_white, increase, ceiling)
-    def decrease_white(self, decrease=1, floor=MIN_WHITE):
-        return self._decrease_or_floor(self.get_white, self.set_white, decrease, floor)
-
-    def get_hsv(self):
-        red = self.red / float(self.MAX_RED)
-        green = self.green / float(self.MAX_RED)
-        blue = self.blue / float(self.MAX_BLUE)
-        hsv = colorsys.rgb_to_hsv(red, green, blue)
-        return hsv
-    def set_hsv(self, hsv):
-        rgb = colorsys.hsv_to_rgb(*hsv)
-        self.red = self.MAX_RED * rgb[0]
-        self.green = self.MAX_GREEN * rgb[1]
-        self.blue = self.MAX_BLUE * rgb[2]
-    hsv = property(get_hsv, set_hsv)
-
-    def set_hue(self, hue):
-        self.hsv = (hue, self.hsv[1], self.hsv[2])
-    def get_hue(self):
-        return self.hsv[0]
-    hue = property(get_hue, set_hue)
-
-    def increase_hue(self, increase=1/255.0, ceiling=1):
-        return self._increase_or_ceiling(get_hue, set_hue, increase, ceiling)
-    def decrease_hue(self, decrease=1/255.0, floor=0):
-        return self._decrease_or_floor(get_hue, set_hue, decrease, floor)
-
-    def _increase_or_ceiling(self, get_light, set_light, increase, ceiling):
-        "Increase the intensity of the given light by the given intensity"
-        intensity = get_light() + increase
-        if intensity > ceiling:
-            set_light(ceiling)
-            return False
-        set_light(intensity)
-        return True
-
-    def _decrease_or_floor(self, get_light, set_light, decrease, floor):
-        "Decrease the intensity of the given light by the given intensity"
-        intensity = get_light() - decrease
-        if intensity < floor:
-            set_light(floor)
-            return False
-        set_light(intensity)
-        return True
 
     def blackout(self):
         self.set_red(self.MIN_RED)

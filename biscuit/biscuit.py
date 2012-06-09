@@ -4,6 +4,16 @@ import sys
 import serial
 import time
 
+def main():
+    port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
+    hc = HardwareChain(port, 2, .001)
+    hc.beacon(0)
+    time.sleep(.5)
+    hc.beacon(1)
+    time.sleep(.5)
+    man = Manager(hc)
+    man.run()
+
 class FrameLights(object):
     def __init__(self, address, hc):
         self.address = address
@@ -22,7 +32,7 @@ class FrameLights(object):
         self.next_page = int(not self.page_idx)
         self.pages[self.next_page] = self.pages[self.page_idx][:]
         self.page_idx = self.next_page
-    
+
     def dirty(self):
         return self.pages[0] != self.pages[1]
 
@@ -219,11 +229,6 @@ class Manager(object):
         # check to see if there is any input
         self.hc.refresh()
 
-port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
-hc = HardwareChain(port, 2, .001)
-hc.beacon(0)
-time.sleep(.5)
-hc.beacon(1)
-time.sleep(.5)
-man = Manager(hc)
-man.run()
+
+if __name__ == '__main__':
+    main()
