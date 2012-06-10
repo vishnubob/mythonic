@@ -4,12 +4,16 @@ import sys
 import serial
 import time
 
+BOARD_COUNT = 3
+
 def main():
     port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
-    hc = HardwareChain(port, 2, .001)
+    hc = HardwareChain(port, BOARD_COUNT, .001)
     hc.beacon(0)
     time.sleep(.5)
     hc.beacon(1)
+    time.sleep(.5)
+    hc.beacon(2)
     time.sleep(.5)
     man = Manager(hc)
     man.run()
@@ -232,6 +236,7 @@ class Manager(object):
                     print self.hc.get_touch_averages()
                     print self.hc.get_touch_peeks()
                     print
+                    return
 
     def cycle(self):
         # check to see if there is any input
