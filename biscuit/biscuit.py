@@ -182,7 +182,6 @@ class HardwareChain(object):
         port.write(chr(address))
         time.sleep(self.write_delay)
         light_data = list(light_data)
-        print light_data
         for val in light_data:
             if (val & 0x1):
                 val += 1
@@ -225,10 +224,11 @@ class Manager(object):
         """
         Implements business logic.
         """
-        for vals in self.hc.get_touch_triggers():
+        triggers = self.hc.get_touch_triggers()
+        for vals in triggers:
             for val in vals:
                 if val:
-                    print array
+                    print triggers
                     print self.hc.get_touch_averages()
                     print self.hc.get_touch_peeks()
                     print
