@@ -18,6 +18,7 @@ class SSManager(Manager):
         self.picture_frames = []
         for idx in range(number_of_boxes):
             self.picture_frames.append(PictureFrame(idx, hc))
+        self.active_frames = set()
 
     def calc_intensity(self, ceiling, offset=0, rate=1):
         """
@@ -36,10 +37,22 @@ class SSManager(Manager):
 
     def think(self):
         """
-        Cycle through various combinations of colors
+        Entertain the burners and burn-heads
         """
-        for idx, pf in enumerate(self.picture_frames):
-            offset = idx * 10
+        touched = set()
+        triggers = self.hc.get_touch_triggers()
+        for idx, directions in enumerate(triggers):
+            if reduce(lambda a, b: a or b, directions):
+                touched.add(self.picture_frames[idx])
+        for pf in self.picture_frames:
+            if pf in touched:
+                if pf in self.active_frames:
+                    self.active_frames.remove(pf)
+                    pf.set_white(pf.MIN_WHITE)
+                else:
+                    self.active_frames.add(pf)
+                    pf.set_white(pf.MAX_WHITE / 2)
+            offset = pf.address * 10
             pf.set_red(self.calc_intensity(pf.MAX_RED,  0 + offset))
             pf.set_green(self.calc_intensity(pf.MAX_GREEN, 85 + offset))
             pf.set_blue(self.calc_intensity(pf.MAX_BLUE, 170 + offset))

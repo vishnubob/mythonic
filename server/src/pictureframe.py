@@ -3,7 +3,9 @@ import colorsys
 from biscuit import FrameLights
 
 class PictureFrame(object):
-    "A picture frame with lighting"
+    """
+    A picture frame with lighting a touch sensitivity.
+    """
 
     MAX_RED = 0xff
     MIN_RED = 0x0
