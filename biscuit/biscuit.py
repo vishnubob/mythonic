@@ -161,6 +161,7 @@ class HardwareChain(object):
 
     def beacon(self, addr):
         cmd = 0x80 | ord('B')
+        port = self.port
         port.write(chr(cmd))
         time.sleep(self.write_delay)
         port.write(chr(addr))
@@ -175,6 +176,7 @@ class HardwareChain(object):
 
     def send_light_data(self, address, light_data):
         cmd = 0x80 | ord('L')
+        port = self.port
         port.write(chr(cmd))
         time.sleep(self.write_delay)
         port.write(chr(address))
@@ -191,6 +193,7 @@ class HardwareChain(object):
 
     def get_touch_data(self, addr):
         cmd = 0x80 | ord('T')
+        port = self.port
         port.write(chr(cmd))
         time.sleep(self.write_delay)
         port.write(chr(addr))
