@@ -5,26 +5,39 @@ import signal
 import sys
 import time
 
+import midi.sequencer
+
 from mythonic import SSManager
 from biscuit import HardwareChain
 
 PFRAME_COUNT = 3
 
-def main():
-    port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
-    hc = HardwareChain(port, PFRAME_COUNT, .001)
-    hc.beacon(0)
-    time.sleep(.5)
-    hc.beacon(1)
-    time.sleep(.5)
-    hc.beacon(2)
-    time.sleep(.5)
+def make_write_sequencer(client, port):
+    seq = midi.sequencer.SequencerWrite(sequencer_resolution=120)
+    seq.subscribe_port(client, port)
+    seq.start_sequencer()
+    return seq
 
-    man = SSManager(hc, PFRAME_COUNT)
+def main():
+    if len(sys.argv) != 4:
+        script_name = sys.argv[0]
+        print "Usage:   {0} <midi client> <midi port> <tty>".format(sys.argv[0])
+        print "Example: {0} 128 0 /dev/ttyUSB0".format(sys.argv[0])
+        exit(2)
+
+    client = sys.argv[1]
+    port = sys.argv[2]
+    tty = sys.argv[3]
+
+    tty = serial.Serial(tty, baudrate=1000000, parity=serial.PARITY_EVEN)
+    hc = HardwareChain(tty, PFRAME_COUNT, .001)
+    seq = make_write_sequencer(client, port)
+
+    man = SSManager(seq, hc, PFRAME_COUNT)
 
     def signal_handler(signal, frame):
         man.blackout()
-        for i in range(PFRAME_COUNT * 2):
+        for i in range(1000):
             man.cycle()
         sys.exit(0)
 

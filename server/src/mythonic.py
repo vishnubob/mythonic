@@ -5,6 +5,8 @@ The business logic for Sonic Storyboard
 import math
 import time
 
+import midi
+
 from biscuit import Manager
 from pictureframe import PictureFrame
 
@@ -13,13 +15,14 @@ class SSManager(Manager):
     Runner for Sonic Storyboard.
     """
 
-    def __init__(self, hc, number_of_boxes):
+    def __init__(self, midi_seq, hc, number_of_boxes):
         super(SSManager, self).__init__(hc)
         self.picture_frames = []
         for idx in range(number_of_boxes):
             self.picture_frames.append(PictureFrame(idx, hc))
         self.active_frames = []
         self.patterns = [[self.picture_frames[i] for i in [0, 1]]]
+        self.midi_seq = midi_seq
 
     def calc_flashing(self, mini, maxi, offset=0, rate=1):
         seed = time.time() * rate + offset
@@ -77,6 +80,9 @@ class SSManager(Manager):
 #
         self.active_frames.append(activated_pf)
 
+    def play_music(self):
+        self.midi_seq.event_write(midi.NoteOnEvent(tick=0, channel=1, data=[int(abs(math.sin(time.time() * 10) * 127)), 50]), False, False, True)
+
     def think(self):
         """
         Entertain the burners and burn-heads
@@ -103,6 +109,7 @@ class SSManager(Manager):
                 pf.uv = self.calc_intensity(pf.MAX_UV, 0 + offset, 0.5)
                 if self.target_pattern is not None and pf in self.target_pattern:
                     if self.active_frames == self.target_pattern:
+                        self.play_music()
                         pf.blackout()
                         pf.red = pf.MAX_RED
                     else:
@@ -111,4 +118,4 @@ class SSManager(Manager):
             else:
                 # Deactivated frames look borring
                 pf.blackout()
-                pf.white = pf.MAX_WHITE/3
+                pf.white = pf.MAX_WHITE / 3
