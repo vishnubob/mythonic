@@ -61,8 +61,8 @@ class Average(list):
     def normalize(self, threshold=20):
         avg = self.average()
         self.threshold = avg + threshold
-        print "%s new threshold set to %.2f" % (id(self), self.threshold)
-    
+        #print "%s new threshold set to %.2f" % (id(self), self.threshold)
+
     def push(self, val): 
         self[self.idx] = ord(val)
         self.idx = (self.idx + 1) % self.size
