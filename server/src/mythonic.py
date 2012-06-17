@@ -10,6 +10,87 @@ import midi
 from biscuit import Manager
 from pictureframe import PictureFrame
 
+class MusicBox(object):
+    """
+    Loop and manage midi tracks
+    """
+
+    def __init__(self, midi_seq, pattern):
+        self.midi_seq = midi_seq
+        pattern.make_ticks_abs()
+        self.pattern = pattern
+        self.tick_cursor = 0
+        self.last_cursor_update = None
+
+    def get_ticks_per_s(self):
+        return self.tempo / float(self.resolution)
+    ticks_per_s = property(get_ticks_per_s)
+
+    def get_resolution(self):
+        return self.pattern.resolution
+    resolution = property(get_resolution)
+
+    def get_tempo(self):
+        return 60 * 1000000 / self.midi_seq.sequencer_tempo
+    tempo = property(get_tempo)
+
+    def get_max_cursor(self):
+        return max(event.tick for track in self.pattern for event in track)
+    max_cursor = property(get_max_cursor)
+
+    def increment_cursor(self):
+        old_cursor = self.tick_cursor
+        self.tick_cursor += 1
+        if self.tick_cursor > self.max_cursor:
+            print "Upping cursor!"
+            next_cursor = self.tick_cursor
+            # Increment the ticks of all the events
+            # Otherwise looping around may have negative effects
+            for track in self.pattern:
+                for event in track:
+                    if event.tick != old_cursor:
+                        event.tick += next_cursor
+        self.last_cursor_update = time.time()
+        return old_cursor
+
+    def step(self):
+        """
+        Handles any event sending that might need to happen.
+        """
+        if self.last_cursor_update is not None:
+            start = self.last_cursor_update
+            end = time.time()
+            ticks_transpired = int((end - start) * self.ticks_per_s)
+        else:
+           ticks_transpired = 1
+        if ticks_transpired <= 0:
+            return
+
+        events_by_tick = {}
+        for track in self.pattern:
+            for event in track:
+                if event.tick not in events_by_tick:
+                    events_by_tick[event.tick] = []
+                events_by_tick[event.tick] += [event]
+
+        events = []
+        for i in range(ticks_transpired):
+            cursor = self.increment_cursor()
+            if cursor in events_by_tick:
+                events += events_by_tick[cursor]
+
+        events.sort()
+        for event in events:
+            self.write_event(event)
+
+    def write_event(self, event):
+        buf = self.midi_seq.event_write(event, False, False, True)
+        if buf is not None and buf < 1000: 
+            # TODO: Do something smarter than sleep
+            print "WARNING! event_write buf < 1000"
+            time.sleep(.5) 
+        return buf
+
 class SSManager(Manager):
     """
     Runner for Sonic Storyboard.
