@@ -59,19 +59,16 @@ class MusicBox(object):
         self.last_cursor_update = time.time()
         return old_cursor
 
-    def step(self):
-        """
-        Handles any event sending that might need to happen.
-        """
+    def get_ticks_transpired(self):
         if self.last_cursor_update is not None:
             start = self.last_cursor_update
             end = time.time()
-            ticks_transpired = int((end - start) * self.ticks_per_s)
+            return int((end - start) * self.ticks_per_s)
         else:
-           ticks_transpired = 1
-        if ticks_transpired <= 0:
-            return
-
+           return 1
+    ticks_transpired = property(get_ticks_transpired)
+ 
+    def get_unmuted_events_by_tick(self):
         events_by_tick = {}
         for track_idx, track in enumerate(self.pattern):
             if track_idx in self.muted:
@@ -80,13 +77,22 @@ class MusicBox(object):
                 if event.tick not in events_by_tick:
                     events_by_tick[event.tick] = []
                 events_by_tick[event.tick] += [event]
+        return events_by_tick
+    unmuted_events_by_tick = property(get_unmuted_events_by_tick)
 
+    def step(self):
+        """
+        Handles any event sending that might need to happen.
+        """
+        ticks_transpired = self.ticks_transpired
+        if ticks_transpired <= 0:
+            return
+        events_by_tick = self.unmuted_events_by_tick
         events = []
         for i in range(ticks_transpired):
             cursor = self.increment_cursor()
             if cursor in events_by_tick:
                 events += events_by_tick[cursor]
-
         events.sort()
         for event in events:
             self.write_event(event)
