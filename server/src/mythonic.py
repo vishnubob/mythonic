@@ -21,6 +21,7 @@ class MusicBox(object):
         self.pattern = pattern
         self.tick_cursor = 0
         self.last_cursor_update = None
+        self.orginal_max_cursor = self.max_cursor
 
     def get_ticks_per_s(self):
         return self.tempo / float(self.resolution)
@@ -42,14 +43,12 @@ class MusicBox(object):
         old_cursor = self.tick_cursor
         self.tick_cursor += 1
         if self.tick_cursor > self.max_cursor:
-            print "Upping cursor!"
-            next_cursor = self.tick_cursor
             # Increment the ticks of all the events
-            # Otherwise looping around may have negative effects
+            # Otherwise looping around replays everything
             for track in self.pattern:
                 for event in track:
                     if event.tick != old_cursor:
-                        event.tick += next_cursor
+                        event.tick += self.orginal_max_cursor
         self.last_cursor_update = time.time()
         return old_cursor
 
@@ -65,6 +64,7 @@ class MusicBox(object):
            ticks_transpired = 1
         if ticks_transpired <= 0:
             return
+        time.sleep(0.001)
 
         events_by_tick = {}
         for track in self.pattern:
