@@ -22,6 +22,7 @@ class MusicBox(object):
         self.tick_cursor = 0
         self.last_cursor_update = None
         self.orginal_max_cursor = self.max_cursor
+        self.muted = set()
 
     def get_ticks_per_s(self):
         return self.tempo / float(self.resolution)
@@ -38,6 +39,12 @@ class MusicBox(object):
     def get_max_cursor(self):
         return max(event.tick for track in self.pattern for event in track)
     max_cursor = property(get_max_cursor)
+
+    def mute(self, track_idx):
+        self.muted.add(track_idx)
+
+    def unmute(self, track_idx):
+        self.muted.remove(track_idx)
 
     def increment_cursor(self):
         old_cursor = self.tick_cursor
@@ -64,10 +71,11 @@ class MusicBox(object):
            ticks_transpired = 1
         if ticks_transpired <= 0:
             return
-        time.sleep(0.001)
 
         events_by_tick = {}
-        for track in self.pattern:
+        for track_idx, track in enumerate(self.pattern):
+            if track_idx in self.muted:
+                continue
             for event in track:
                 if event.tick not in events_by_tick:
                     events_by_tick[event.tick] = []
