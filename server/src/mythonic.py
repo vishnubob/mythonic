@@ -2,6 +2,7 @@
 The business logic for Sonic Storyboard
 """
 
+import copy
 import math
 import time
 
@@ -10,6 +11,51 @@ import midi
 from biscuit import Manager
 from pictureframe import PictureFrame
 
+class MythonicTrack(midi.Track):
+    """
+    A list of midi events representing a musical track.
+
+    Extends functionality of midi.Track by adding mute/unmute
+    """
+
+    _muted = False
+    _velocities = {}
+
+    def __init__(self, events):
+        super(MythonicTrack, self).__init__(events)
+        for event in self.note_on_events:
+            self._velocities[id(event)] = event.velocity
+
+    def increase_ticks(self, increase):
+        for event in self:
+            event.tick = event.tick + increase
+
+    def mute(self):
+        if self.muted:
+            return
+        for event in self.note_on_events:
+            # Record last unmuted value in case there were changes to it
+            self._velocities[id(event)] = event.velocity
+            event.velocity = 0
+        self._muted = True
+
+    def unmute(self):
+        if not self.muted:
+            return
+        for event in self.note_on_events:
+            event.velocity = self._velocities[id(event)]
+        self._muted = False
+
+    def get_note_on_events(self):
+        return filter(lambda e: isinstance(e, midi.NoteOnEvent), self)
+    note_on_events = property(get_note_on_events)
+
+    def get_muted(self):
+        return self._muted
+    muted = property(get_muted)
+
+
+#class MusicBox(midi.Pattern):
 class MusicBox(object):
     """
     Loop and manage midi tracks
@@ -21,8 +67,8 @@ class MusicBox(object):
         self.pattern = pattern
         self.tick_cursor = 0
         self.last_cursor_update = None
-        self.orginal_max_cursor = self.max_cursor
-        self.muted = set()
+        self.tracks = map(MythonicTrack, pattern)
+        self.original_max_cursor = self.max_cursor
 
     def get_ticks_per_s(self):
         return self.tempo / float(self.resolution)
@@ -37,25 +83,15 @@ class MusicBox(object):
     tempo = property(get_tempo)
 
     def get_max_cursor(self):
-        return max(event.tick for track in self.pattern for event in track)
+        return max(event.tick for track in self.tracks for event in track)
     max_cursor = property(get_max_cursor)
-
-    def mute(self, track_idx):
-        self.muted.add(track_idx)
-
-    def unmute(self, track_idx):
-        self.muted.remove(track_idx)
 
     def increment_cursor(self):
         old_cursor = self.tick_cursor
+        if old_cursor > self.max_cursor:
+            for track in self.tracks:
+                track.increase_ticks(self.original_max_cursor)
         self.tick_cursor += 1
-        if self.tick_cursor > self.max_cursor:
-            # Increment the ticks of all the events
-            # Otherwise looping around replays everything
-            for track in self.pattern:
-                for event in track:
-                    if event.tick != old_cursor:
-                        event.tick += self.orginal_max_cursor
         self.last_cursor_update = time.time()
         return old_cursor
 
@@ -67,18 +103,16 @@ class MusicBox(object):
         else:
            return 1
     ticks_transpired = property(get_ticks_transpired)
- 
-    def get_unmuted_events_by_tick(self):
+
+    def get_events_by_tick(self):
         events_by_tick = {}
-        for track_idx, track in enumerate(self.pattern):
-            if track_idx in self.muted:
-                continue
+        for track in self.tracks:
             for event in track:
                 if event.tick not in events_by_tick:
                     events_by_tick[event.tick] = []
                 events_by_tick[event.tick] += [event]
         return events_by_tick
-    unmuted_events_by_tick = property(get_unmuted_events_by_tick)
+    events_by_tick = property(get_events_by_tick)
 
     def step(self):
         """
@@ -87,7 +121,7 @@ class MusicBox(object):
         ticks_transpired = self.ticks_transpired
         if ticks_transpired <= 0:
             return
-        events_by_tick = self.unmuted_events_by_tick
+        events_by_tick = self.events_by_tick
         events = []
         for i in range(ticks_transpired):
             cursor = self.increment_cursor()
@@ -96,6 +130,7 @@ class MusicBox(object):
         events.sort()
         for event in events:
             self.write_event(event)
+            print event
 
     def write_event(self, event):
         buf = self.midi_seq.event_write(event, False, False, True)
@@ -110,14 +145,15 @@ class SSManager(Manager):
     Runner for Sonic Storyboard.
     """
 
-    def __init__(self, midi_seq, hc, number_of_boxes):
+    def __init__(self, music_box, hc, number_of_boxes):
         super(SSManager, self).__init__(hc)
+        self.music_box = music_box
         self.picture_frames = []
         for idx in range(number_of_boxes):
-            self.picture_frames.append(PictureFrame(idx, hc))
+            pf = PictureFrame(idx, hc, self.music_box.tracks[idx + 1])
+            self.picture_frames.append(pf)
         self.active_frames = []
         self.patterns = [[self.picture_frames[i] for i in [0, 1]]]
-        self.midi_seq = midi_seq
 
     def calc_flashing(self, mini, maxi, offset=0, rate=1):
         seed = time.time() * rate + offset
@@ -138,10 +174,6 @@ class SSManager(Manager):
     def deactivate(self, pf):
         self.active_frames.remove(pf)
 
-    # In order to select a pattern, pf has to be the start of a new pattern or within the old
-    def next_target_pattern(self, pf):
-        return self.get_target_pattern([pf])
-
     def get_target_pattern(self, additional=[]):
         considered = additional + self.active_frames
         for pattern in self.patterns:
@@ -153,30 +185,7 @@ class SSManager(Manager):
     target_pattern = property(get_target_pattern)
 
     def activate(self, activated_pf):
-        next_target_pattern = self.next_target_pattern(activated_pf)
-#
-#        # Old pattern canceled
-#        if self.target_pattern is not None and next_target_pattern is None:
-#            print "Out of bounds of the old pattern"
-#            for pf in self.active_frames:
-#                if pf in self.target_pattern:
-#                    self.deactivate(pf)
-#        # New pattern selected
-#        elif self.target_pattern is None and next_target_pattern is not None:
-#            print "New pattern selected"
-#            for pf in self.active_frames:
-#                if pf not in next_target_pattern:
-#                    self.deactivate(pf)
-#        elif self.target_pattern != next_target_pattern:
-#            print "Pattern changed"
-#
-#        if next_target_pattern is None:
-#            print "Free mode"
-#
         self.active_frames.append(activated_pf)
-
-    def play_music(self):
-        self.midi_seq.event_write(midi.NoteOnEvent(tick=0, channel=1, data=[int(abs(math.sin(time.time() * 10) * 127)), 50]), False, False, True)
 
     def think(self):
         """
@@ -187,7 +196,7 @@ class SSManager(Manager):
         for idx, directions in enumerate(triggers):
             if reduce(lambda a, b: a or b, directions):
                 touched.append(self.picture_frames[idx])
-        for pf in self.picture_frames:
+        for pf_idx, pf in enumerate(self.picture_frames):
             if pf in touched:
                 # Handle (de)activation by touch
                 if pf in self.active_frames:
@@ -204,13 +213,15 @@ class SSManager(Manager):
                 pf.uv = self.calc_intensity(pf.MAX_UV, 0 + offset, 0.5)
                 if self.target_pattern is not None and pf in self.target_pattern:
                     if self.active_frames == self.target_pattern:
-                        self.play_music()
                         pf.blackout()
                         pf.red = pf.MAX_RED
                     else:
                         # Flashing UV when in pattern
                         pf.uv = self.calc_flashing(pf.MIN_UV, pf.MAX_UV, 0, 10)
+                pf.track.unmute()
             else:
-                # Deactivated frames look borring
+                # Deactivated frame...
+                pf.track.mute()
                 pf.blackout()
                 pf.white = pf.MAX_WHITE / 3
+        self.music_box.step()
