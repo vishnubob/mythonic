@@ -2,7 +2,6 @@
 The business logic for Sonic Storyboard
 """
 
-import copy
 import math
 import time
 
@@ -13,9 +12,10 @@ from pictureframe import PictureFrame
 
 class MythonicPictureFrame(PictureFrame):
 
-    def __init__(self, main_tracks=[], bonus_tracks=[]):
+    def __init__(self, address, hc, main_tracks=[], bonus_tracks=[]):
         self.main_tracks = main_tracks
         self.bonus_tracks = bonus_tracks
+        super(MythonicPictureFrame, self).__init__(address, hc)
 
     def mute(self):
         self.mute_bonus()
@@ -51,41 +51,29 @@ class MythonicPictureFrame(PictureFrame):
 
     def step_inactive(self):
         """
-        A picture frame at rest. Only white light at 1/3rd intensity
+        Effects for when this frame has either not been activated yet
+        or has been deactivated.
         """
-        self.mute()
-        self.blackout()
-        # TODO: Flicker instead?
-        self.white = pf.MAX_WHITE / 3
 
     def step_active(self):
-        offset = self.address * 10
-        self.white = pf.MIN_WHITE
-        self.red = self.calc_sin(pf.MAX_RED,  0 + offset)
-        self.green = self.calc_sin(pf.MAX_GREEN, 85 + offset)
-        self.blue = self.calc_sin(pf.MAX_BLUE, 170 + offset)
-        self.uv = self.calc_sin(pf.MAX_UV, 0 + offset, 0.5)
+        """
+        Effects for when this frame has been activated.
+        """
 
     def step_active_hint(self):
         """
-        Hint that this selectd picture frame is part of a pattern
+        Hints that this activated picture frame is part of a pattern
         """
-        pf.uv = self.calc_square(pf.MIN_UV, pf.MAX_UV)
 
     def step_inactive_hint(self):
         """
         Hints that this inactive picture frame is part of a pattern
         """
-        pass
 
     def step_bonus(self):
         """
-        Spectacle for a special occasion, like being part of a completed
-        pattern
+        Effects for when this frame is part of a completed pattern
         """
-        pf.unmute_bonus()
-        pf.blackout()
-        pf.red = pf.MAX_RED
 
 class MythonicTrack(midi.Track):
     """
@@ -137,7 +125,7 @@ class MusicBox(object):
     Loop and manage midi tracks
     """
 
-    def __init__(self, midi_seq, pattern):
+    def __init__(self, pattern, midi_seq):
         self.midi_seq = midi_seq
         pattern.make_ticks_abs()
         self.pattern = pattern
@@ -210,26 +198,28 @@ class MusicBox(object):
 
     def write_event(self, event):
         buf = self.midi_seq.event_write(event, False, False, True)
-        if buf is not None and buf < 1000: 
+        if buf is not None and buf < 1000:
             # TODO: Do something smarter than sleep
             print "WARNING! event_write buf < 1000"
-            time.sleep(.5) 
+            time.sleep(.5)
         return buf
 
-class SSManager(Manager):
+class MythonicManager(Manager):
     """
-    Runner for Sonic Storyboard.
+    Generic manager that implements concepts like patterns and
+    picture frame activation, making use of mythonic class features
+
+     MythonicPictureFrame instances and subclasses thereof.
     """
 
-    def __init__(self, music_box, hc, number_of_boxes):
-        super(SSManager, self).__init__(hc)
+    def __init__(self, hc, picture_frames, patterns=[], music_box=None):
+        super(MythonicManager, self).__init__(hc)
+        if len(picture_frames) != hc.length:
+            raise ValueError("picture_frames length must match HardwareChain")
+        self.picture_frames = picture_frames
+        self.patterns = patterns
         self.music_box = music_box
-        self.picture_frames = []
-        for idx in range(number_of_boxes):
-            pf = PictureFrame(idx, hc, self.music_box.tracks[idx + 1])
-            self.picture_frames.append(pf)
         self.active_frames = []
-        self.patterns = [[self.picture_frames[i] for i in [0, 1]]]
 
     def blackout(self):
         for pf in self.picture_frames:
@@ -284,11 +274,12 @@ class SSManager(Manager):
                 if self.in_target_pattern(pf):
                     if self.pattern_complete:
                         # Frame is part of exclusive and complete pattern
-                        pf.step_special()
+                        pf.step_bonus()
                     else:
                         # Frame is in pattern, but pattern is incomplete
                         pf.step_active_hint()
             else:
                 # Frame is inactive
                 pf.step_inactive()
-        self.music_box.step()
+        if self.music_box is not None:
+            self.music_box.step()
