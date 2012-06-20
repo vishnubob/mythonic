@@ -11,11 +11,87 @@ import midi
 from biscuit import Manager
 from pictureframe import PictureFrame
 
+class MythonicPictureFrame(PictureFrame):
+
+    def __init__(self, main_tracks=[], bonus_tracks=[]):
+        self.main_tracks = main_tracks
+        self.bonus_tracks = bonus_tracks
+
+    def mute(self):
+        self.mute_bonus()
+        self.mute_main()
+
+    def mute_main(self):
+        for track in self.main_tracks:
+            track.mute()
+
+    def unmute_main(self):
+        for track in self.main_tracks:
+            track.unmute()
+
+    def mute_bonus(self):
+        for track in self.bonus_tracks:
+            track.mute()
+
+    def unmute_bonus(self):
+        for track in self.bonus_tracks:
+            track.unmute()
+
+    def calc_sin(self, ceiling, offset=0, rate=1):
+        """
+        Return an intensity staggered by "offset", changing at "rate"
+        """
+        seed = time.time() * rate + offset
+        intensity = int(math.sin(seed) * ceiling)
+        return max(intensity, 0)
+
+    def calc_square(self, low, high, offset=0, rate=10):
+        seed = time.time() * rate + offset
+        return low if math.sin(seed) <= 0 else high
+
+    def step_inactive(self):
+        """
+        A picture frame at rest. Only white light at 1/3rd intensity
+        """
+        self.mute()
+        self.blackout()
+        # TODO: Flicker instead?
+        self.white = pf.MAX_WHITE / 3
+
+    def step_active(self):
+        offset = self.address * 10
+        self.white = pf.MIN_WHITE
+        self.red = self.calc_sin(pf.MAX_RED,  0 + offset)
+        self.green = self.calc_sin(pf.MAX_GREEN, 85 + offset)
+        self.blue = self.calc_sin(pf.MAX_BLUE, 170 + offset)
+        self.uv = self.calc_sin(pf.MAX_UV, 0 + offset, 0.5)
+
+    def step_active_hint(self):
+        """
+        Hint that this selectd picture frame is part of a pattern
+        """
+        pf.uv = self.calc_square(pf.MIN_UV, pf.MAX_UV)
+
+    def step_inactive_hint(self):
+        """
+        Hints that this inactive picture frame is part of a pattern
+        """
+        pass
+
+    def step_bonus(self):
+        """
+        Spectacle for a special occasion, like being part of a completed
+        pattern
+        """
+        pf.unmute_bonus()
+        pf.blackout()
+        pf.red = pf.MAX_RED
+
 class MythonicTrack(midi.Track):
     """
     A list of midi events representing a musical track.
 
-    Extends functionality of midi.Track by adding mute/unmute
+    Extends functionality of midi.Track by adding mute/unmute and friends
     """
 
     _muted = False
@@ -155,24 +231,9 @@ class SSManager(Manager):
         self.active_frames = []
         self.patterns = [[self.picture_frames[i] for i in [0, 1]]]
 
-    def calc_flashing(self, mini, maxi, offset=0, rate=1):
-        seed = time.time() * rate + offset
-        return mini if math.sin(seed) <= 0 else maxi
-
-    def calc_intensity(self, ceiling, offset=0, rate=1):
-        """
-        Return an intensity staggered by "offset", changing at "rate"
-        """
-        seed = time.time() * rate + offset
-        intensity = int(math.sin(seed) * ceiling)
-        return max(intensity, 0)
-
     def blackout(self):
         for pf in self.picture_frames:
             pf.blackout()
-
-    def deactivate(self, pf):
-        self.active_frames.remove(pf)
 
     def get_target_pattern(self, additional=[]):
         considered = additional + self.active_frames
@@ -184,44 +245,50 @@ class SSManager(Manager):
         return None
     target_pattern = property(get_target_pattern)
 
-    def activate(self, activated_pf):
-        self.active_frames.append(activated_pf)
+    def activate(self, pf):
+        self.active_frames.append(pf)
+
+    def deactivate(self, pf):
+        self.active_frames.remove(pf)
+
+    def is_active(self, pf):
+        return pf in self.active_frames
+
+    def in_target_pattern(self, pf):
+        return self.target_pattern is not None and pf in self.target_pattern
+
+    def is_pattern_complete(self):
+        return self.active_frames == self.target_pattern
+    pattern_complete = property(is_pattern_complete)
 
     def think(self):
         """
         Entertain the burners and burn-heads
         """
+        # Collect touch data
         touched = []
         triggers = self.hc.get_touch_triggers()
         for idx, directions in enumerate(triggers):
             if reduce(lambda a, b: a or b, directions):
                 touched.append(self.picture_frames[idx])
-        for pf_idx, pf in enumerate(self.picture_frames):
+        # Update picture frames
+        for pf in self.picture_frames:
             if pf in touched:
                 # Handle (de)activation by touch
-                if pf in self.active_frames:
+                if self.is_active(pf):
                     self.deactivate(pf)
                 else:
                     self.activate(pf)
-            if pf in self.active_frames:
-                # Activated frames look cool
-                offset = pf.address * 10
-                pf.white = pf.MIN_WHITE
-                pf.red = self.calc_intensity(pf.MAX_RED,  0 + offset)
-                pf.green = self.calc_intensity(pf.MAX_GREEN, 85 + offset)
-                pf.blue = self.calc_intensity(pf.MAX_BLUE, 170 + offset)
-                pf.uv = self.calc_intensity(pf.MAX_UV, 0 + offset, 0.5)
-                if self.target_pattern is not None and pf in self.target_pattern:
-                    if self.active_frames == self.target_pattern:
-                        pf.blackout()
-                        pf.red = pf.MAX_RED
+            if self.is_active(pf):
+                pf.step_active()
+                if self.in_target_pattern(pf):
+                    if self.pattern_complete:
+                        # Frame is part of exclusive and complete pattern
+                        pf.step_special()
                     else:
-                        # Flashing UV when in pattern
-                        pf.uv = self.calc_flashing(pf.MIN_UV, pf.MAX_UV, 0, 10)
-                pf.track.unmute()
+                        # Frame is in pattern, but pattern is incomplete
+                        pf.step_active_hint()
             else:
-                # Deactivated frame...
-                pf.track.mute()
-                pf.blackout()
-                pf.white = pf.MAX_WHITE / 3
+                # Frame is inactive
+                pf.step_inactive()
         self.music_box.step()

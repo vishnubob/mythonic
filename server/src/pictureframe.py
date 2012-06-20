@@ -27,10 +27,9 @@ class PictureFrame(object):
     MIN_UV = 0x0
     UV_IDX = 5
 
-    def __init__(self, address, hc, track):
+    def __init__(self, address, hc):
        self.address = address
        self.hc = hc
-       self.track = track
 
     def __str__(self):
         return "PictureFrame(addr={0}, red={1}, green={2}, blue={3}, uv={4}, white={5})".format(
