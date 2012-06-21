@@ -1,0 +1,19 @@
+---
+midi:
+    path: midi/test.mid
+
+patterns:
+    - [0, 1]
+
+frames:
+    - address: 0
+      main_tracks: [1]
+
+    - address: 1
+      main_tracks: [2]
+
+    - address: 2
+      main_tracks: [3]
+
+# TODO
+# * named patterns

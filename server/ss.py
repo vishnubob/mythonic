@@ -5,6 +5,8 @@ import signal
 import sys
 import time
 
+import yaml
+
 import midi.sequencer
 import midi
 
@@ -13,8 +15,6 @@ from mythonic import MythonicPictureFrame
 from mythonic import MusicBox
 from biscuit import HardwareChain
 
-PFRAME_COUNT = 3
-
 def make_music_box(client, port, path):
     pattern = midi.read_midifile(path)
     seq = midi.sequencer.SequencerWrite(sequencer_resolution=pattern.resolution)
@@ -22,27 +22,43 @@ def make_music_box(client, port, path):
     seq.start_sequencer()
     return MusicBox(pattern, seq)
 
+def load_manager(tty_dev, config, midi_client, midi_port):
+    tty = serial.Serial(tty_dev, baudrate=1000000, parity=serial.PARITY_EVEN)
+    hc = HardwareChain(tty, len(config["frames"]), .001)
+    music_box = make_music_box(midi_client, midi_port, config["midi"]["path"])
+
+    picture_frames = []
+    for pf_config in config["frames"]:
+        tracks = [music_box.tracks[i] for i in pf_config["main_tracks"]]
+        address = int(pf_config["address"])
+        picture_frames.append(SSPictureFrame(address, hc, tracks))
+
+    # Patterns of picture frames.
+    patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
+
+    # Hardware/file components
+    return SSManager(hc, picture_frames, patterns, music_box)
+
 def main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) not in [3, 5]:
         script_name = sys.argv[0]
-        print "Usage:   {0} <midi client> <midi port> <tty>".format(sys.argv[0])
-        print "Example: {0} 128 0 /dev/ttyUSB0".format(sys.argv[0])
+        print "Usage:   {0} <config> <tty> [<midi client> <midi port>]".format(sys.argv[0])
+        print "Example: {0} ss.yaml /dev/ttyUSB0 128 0".format(sys.argv[0])
         exit(2)
 
-    client = sys.argv[1]
-    port = sys.argv[2]
-    tty = sys.argv[3]
+    config_file = sys.argv[1]
+    tty_dev = sys.argv[2]
+    client = 128 if len(sys.argv) < 4 else int(sys.argv[3])
+    port = 0 if len(sys.argv) < 5 else int(sys.argv[4])
 
-    tty = serial.Serial(tty, baudrate=1000000, parity=serial.PARITY_EVEN)
-    hc = HardwareChain(tty, PFRAME_COUNT, .001)
-    music_box = make_music_box(client, port, "/home/chao/projects/python-midi/sample.mid")
-
-    manager = SSManager(hc, music_box)
+    config_stream = open(config_file)
+    manager = load_manager(tty_dev, yaml.load(config_stream), client, port)
+    config_stream.close()
 
     def signal_handler(signal, frame):
         manager.blackout()
-        for i in range(PFRAME_COUNT * 2):
-            man.cycle()
+        for i in range(len(manager.picture_frames) * 2):
+            manager.cycle()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -99,13 +115,7 @@ class SSManager(MythonicManager):
     Runner for Sonic Storyboard.
     """
 
-    def __init__(self, hc, music_box):
-        picture_frames = []
-        for idx in range(hc.length):
-            print "MAKING!"
-            pf = SSPictureFrame(idx, hc, [music_box.tracks[idx + 1]])
-            picture_frames.append(pf)
-        patterns = [[picture_frames[i] for i in [0, 1]]]
+    def __init__(self, hc, picture_frames, patterns, music_box):
         super(SSManager, self).__init__(hc, picture_frames, patterns, music_box)
 
 if __name__ == '__main__':
