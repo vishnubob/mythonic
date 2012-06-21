@@ -150,14 +150,12 @@ class MusicBox(object):
         return max(event.tick for track in self.tracks for event in track)
     max_cursor = property(get_max_cursor)
 
-    def increment_cursor(self):
-        old_cursor = self.tick_cursor
-        if old_cursor > self.max_cursor:
+    def increment_tick_cursor(self):
+        if self.tick_cursor >= self.max_cursor:
             for track in self.tracks:
-                track.increase_ticks(self.original_max_cursor)
+                track.increase_ticks(self.original_max_cursor + 1)
         self.tick_cursor += 1
         self.last_cursor_update = time.time()
-        return old_cursor
 
     def get_ticks_transpired(self):
         if self.last_cursor_update is not None:
@@ -188,13 +186,12 @@ class MusicBox(object):
         events_by_tick = self.events_by_tick
         events = []
         for i in range(ticks_transpired):
-            cursor = self.increment_cursor()
-            if cursor in events_by_tick:
-                events += events_by_tick[cursor]
+            if self.tick_cursor in events_by_tick:
+                events += events_by_tick[self.tick_cursor]
+            self.increment_tick_cursor()
         events.sort()
         for event in events:
             self.write_event(event)
-            print event
 
     def write_event(self, event):
         buf = self.midi_seq.event_write(event, False, False, True)
