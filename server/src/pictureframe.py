@@ -36,15 +36,15 @@ class PictureFrame(object):
             self.address, self.red, self.green, self.blue, self.uv, self.white)
 
     def _set_light(self, channel, intensity):
-        self.hc.set_light(self.address, self.RED_IDX, intensity)
+        self.hc.set_light(self.address, channel, intensity)
     def _get_light(self, channel):
-        return self.hc.get_light(self.address, self.RED_IDX)
+        return self.hc.get_light(self.address, channel)
 
     def set_hsv(self, hsv):
         rgb = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2])
-        self.red = rgb[0] * self.MAX_RED
-        self.green = rgb[1] * self.MAX_GREEN
-        self.blue = rgb[2] * self.MAX_BLUE
+        self.red = int(rgb[0] * self.MAX_RED)
+        self.green = int(rgb[1] * self.MAX_GREEN)
+        self.blue = int(rgb[2] * self.MAX_BLUE)
     def get_hsv(self):
         red = max(self.MIN_RED, self.red / float(self.MAX_RED))
         green = max(self.MIN_GREEN, self.green / float(self.MAX_GREEN))

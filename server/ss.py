@@ -32,7 +32,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     picture_frames = []
     for pf_config in config["frames"]:
         tracks = [music_box.tracks[i] for i in pf_config["main_tracks"]]
-        address = int(pf_config["addrenss"])
+        address = int(pf_config["address"])
         picture_frames.append(SSPictureFrame(address, hc, tracks))
 
     # Patterns of picture frames.
@@ -76,6 +76,7 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Shine only white light at 1/3rd intensity.
         """
+        print "inactive: ", self.address
         self.mute()
         self.blackout()
         self.white = self.MAX_WHITE / 3
@@ -86,11 +87,12 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Minimize white and do a steady overlaping fade of RGB and UV.
         """
+        print "active: ", self.address
         t = time.time() + self.address
         self.unmute_main()
         self.white = self.MIN_WHITE
-        self.hsv = (abs(math.sin(t * 0.05)), 1, 0.5)
-        self.uv = abs(math.sin(t * 0.025 + 1) * self.MAX_UV)
+        self.hsv = (abs(math.sin(t * 0.5)), 1, 0.5)
+        self.uv = int(abs(math.sin(t * 0.25) * self.MAX_UV))
 
     def step_active_hint(self):
         """
@@ -98,6 +100,7 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Slowly flash UV.
         """
+        print "active_hint: ", self.address
         t = time.time() + self.address
         self.uv = self.MAX_UV if math.sin(t) >= 0 else self.MIN_UV
 
@@ -107,6 +110,7 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Play bonus tracks and shine red and only red
         """
+        print "bonus: ", self.address
         self.unmute_bonus()
         self.blackout()
         self.red = self.MAX_RED
