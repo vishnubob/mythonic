@@ -35,44 +35,61 @@ class PictureFrame(object):
         return "PictureFrame(addr={0}, red={1}, green={2}, blue={3}, uv={4}, white={5})".format(
             self.address, self.red, self.green, self.blue, self.uv, self.white)
 
-    def get_red(self):
+    def _set_light(self, channel, intensity):
+        self.hc.set_light(self.address, self.RED_IDX, intensity)
+    def _get_light(self, channel):
         return self.hc.get_light(self.address, self.RED_IDX)
+
+    def set_hsv(self, hsv):
+        rgb = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2])
+        self.red = rgb[0] * self.MAX_RED
+        self.green = rgb[1] * self.MAX_GREEN
+        self.blue = rgb[2] * self.MAX_BLUE
+    def get_hsv(self):
+        red = max(self.MIN_RED, self.red / float(self.MAX_RED))
+        green = max(self.MIN_GREEN, self.green / float(self.MAX_GREEN))
+        blue = max(self.MIN_BLUE, self.blue / float(self.MAX_BLUE))
+        return colorsys.rgb_to_hsv(red, green, blue)
+    hsv = property(get_hsv, set_hsv)
+
+    def get_red(self):
+        return self._get_light(self.RED_IDX)
     def set_red(self, intensity):
         if intensity > self.MAX_RED or intensity < self.MIN_RED:
             raise ValueError("red intensity " + str(intensity) + " is out of bounds")
-        self.hc.set_light(self.address, self.RED_IDX, intensity)
+        self._set_light(self.RED_IDX, intensity)
     red = property(get_red, set_red)
 
     def get_green(self):
-        return self.hc.get_light(self.address, self.GREEN_IDX)
+        return self._get_light(self.GREEN_IDX)
     def set_green(self, intensity):
         if intensity > self.MAX_GREEN or intensity < self.MIN_GREEN:
             raise ValueError("green intensity " + str(intensity) + " is out of bounds")
-        self.hc.set_light(self.address, self.GREEN_IDX, intensity)
+        self._set_light(self.GREEN_IDX, intensity)
     green = property(get_green, set_green)
 
     def get_blue(self):
-        return self.hc.get_light(self.address, self.BLUE_IDX)
+        return self._get_light(self.BLUE_IDX)
     def set_blue(self, intensity):
         if intensity > self.MAX_BLUE or intensity < self.MIN_BLUE:
             raise ValueError("blue intensity " + str(intensity) + " is out of bounds")
-        self.hc.set_light(self.address, self.BLUE_IDX, intensity)
+        self._set_light(self.BLUE_IDX, intensity)
     blue = property(get_blue, set_blue)
 
     def get_white(self):
-        return self.hc.get_light(self.address, self.WHITE_IDX)
+        return self._get_light(self.WHITE_IDX)
     def set_white(self, intensity):
         if intensity > self.MAX_WHITE or intensity < self.MIN_WHITE:
             raise ValueError("white intensity " + str(intensity) + " is out of bounds")
-        self.hc.set_light(self.address, self.WHITE_IDX, intensity)
+        self._set_light(self.WHITE_IDX, intensity)
     white = property(get_white, set_white)
 
     def get_uv(self):
-        return self.hc.get_light(self.address, self.UV_IDX)
+        return self._get_light(self.UV_IDX)
     def set_uv(self, intensity):
         if intensity > self.MAX_UV or intensity < self.MIN_UV:
             raise ValueError("uv intensity " + str(intensity) + " is out of bounds")
-        self.hc.set_light(self.address, self.UV_IDX, intensity)
+        self._set_light(self.UV_IDX, intensity)
     uv = property(get_uv, set_uv)
 
     def blackout(self):

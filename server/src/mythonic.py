@@ -37,18 +37,6 @@ class MythonicPictureFrame(PictureFrame):
         for track in self.bonus_tracks:
             track.unmute()
 
-    def calc_sin(self, ceiling, offset=0, rate=1):
-        """
-        Return an intensity staggered by "offset", changing at "rate"
-        """
-        seed = time.time() * rate + offset
-        intensity = int(math.sin(seed) * ceiling)
-        return max(intensity, 0)
-
-    def calc_square(self, low, high, offset=0, rate=10):
-        seed = time.time() * rate + offset
-        return low if math.sin(seed) <= 0 else high
-
     def step_inactive(self):
         """
         Effects for when this frame has either not been activated yet

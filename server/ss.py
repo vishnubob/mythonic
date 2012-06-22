@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import colorsys
+import math
 import serial
 import signal
 import sys
@@ -30,7 +32,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     picture_frames = []
     for pf_config in config["frames"]:
         tracks = [music_box.tracks[i] for i in pf_config["main_tracks"]]
-        address = int(pf_config["address"])
+        address = int(pf_config["addrenss"])
         picture_frames.append(SSPictureFrame(address, hc, tracks))
 
     # Patterns of picture frames.
@@ -84,13 +86,11 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Minimize white and do a steady overlaping fade of RGB and UV.
         """
+        t = time.time() + self.address
         self.unmute_main()
-        offset = self.address * 10
         self.white = self.MIN_WHITE
-        self.red = self.calc_sin(self.MAX_RED,  0 + offset)
-        self.green = self.calc_sin(self.MAX_GREEN, 85 + offset)
-        self.blue = self.calc_sin(self.MAX_BLUE, 170 + offset)
-        self.uv = self.calc_sin(self.MAX_UV, 0 + offset, 0.5)
+        self.hsv = (abs(math.sin(t * 0.05)), 1, 0.5)
+        self.uv = abs(math.sin(t * 0.025 + 1) * self.MAX_UV)
 
     def step_active_hint(self):
         """
@@ -98,7 +98,8 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Slowly flash UV.
         """
-        self.uv = self.calc_square(self.MIN_UV, self.MAX_UV)
+        t = time.time() + self.address
+        self.uv = self.MAX_UV if math.sin(t) >= 0 else self.MIN_UV
 
     def step_bonus(self):
         """
