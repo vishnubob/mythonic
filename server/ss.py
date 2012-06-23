@@ -69,6 +69,11 @@ def main():
 
 class SSPictureFrame(MythonicPictureFrame):
 
+    def step_screensaver(self):
+        """
+        """
+        print "screenserver: ", self.address
+
     def step_inactive(self):
         """
         Effects for when this frame has either not been activated yet
@@ -87,7 +92,6 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Minimize white and do a steady overlaping fade of RGB and UV.
         """
-        print "active: ", self.address
         t = time.time() + self.address
         self.unmute_main()
         self.white = self.MIN_WHITE
@@ -100,9 +104,8 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Slowly flash UV.
         """
-        print "active_hint: ", self.address
         t = time.time() + self.address
-        self.uv = self.MAX_UV if math.sin(t) >= 0 else self.MIN_UV
+        self.uv = self.MAX_UV if math.sin(t * 2) >= 0 else self.MIN_UV
 
     def step_bonus(self):
         """
@@ -110,7 +113,6 @@ class SSPictureFrame(MythonicPictureFrame):
 
         Play bonus tracks and shine red and only red
         """
-        print "bonus: ", self.address
         self.unmute_bonus()
         self.blackout()
         self.red = self.MAX_RED

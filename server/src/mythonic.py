@@ -194,7 +194,7 @@ class MythonicManager(Manager):
     Generic manager that implements concepts like patterns and
     picture frame activation, making use of mythonic class features
 
-     MythonicPictureFrame instances and subclasses thereof.
+    MythonicPictureFrame instances and subclasses thereof.
     """
 
     def __init__(self, hc, picture_frames, patterns=[], music_box=None):
@@ -205,6 +205,19 @@ class MythonicManager(Manager):
         self.patterns = patterns
         self.music_box = music_box
         self.active_frames = []
+        self.touch_history = {}
+        self.initialized_at = time.time()
+
+    def get_untouched_for(self):
+        """
+        Number of seconds the picture frames have gone untouched
+        """
+        if len(self.touch_history) > 0:
+            untouched_since = max(self.touch_history.keys())
+        else:
+            untouched_since = self.initialized_at
+        return time.time() - untouched_since
+    untouched_for = property(get_untouched_for)
 
     def blackout(self):
         for pf in self.picture_frames:
@@ -236,18 +249,36 @@ class MythonicManager(Manager):
         return self.active_frames == self.target_pattern
     pattern_complete = property(is_pattern_complete)
 
+    def _get_touched(self):
+        """
+        Returns picture frames that were touched.
+
+        Clears triggers.
+        """
+        now = time.time()
+        touched = set()
+        for idx, directions in enumerate(self.hc.get_touch_triggers()):
+            if reduce(lambda a, b: a or b, directions):
+                pf = self.picture_frames[idx]
+                if now not in self.touch_history:
+                    self.touch_history[now] = set()
+                self.touch_history[now].add(pf)
+                touched.add(pf)
+        return touched
+
     def think(self):
         """
         Entertain the burners and burn-heads
         """
+        now = time.time()
         # Collect touch data
-        touched = []
-        triggers = self.hc.get_touch_triggers()
-        for idx, directions in enumerate(triggers):
-            if reduce(lambda a, b: a or b, directions):
-                touched.append(self.picture_frames[idx])
+        touched = self._get_touched()
         # Update picture frames
         for pf in self.picture_frames:
+            print self.untouched_for
+            if self.untouched_for > 6:
+                pf.step_screensaver()
+                continue
             if pf in touched:
                 # Handle (de)activation by touch
                 if self.is_active(pf):
