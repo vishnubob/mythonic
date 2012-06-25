@@ -19,7 +19,7 @@ def main():
     def signal_handler(signal, frame):
         print "ENTERED SIGNAL_HANDLER"
         manager.blackout()
-        for i in range(BOARD_COUNT * 2):
+        for i in range(100):
             manager.cycle()
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
