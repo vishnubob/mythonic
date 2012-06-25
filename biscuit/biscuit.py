@@ -10,7 +10,7 @@ DEBUG_REFRESH = False
 
 def main():
     port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
-    hc = HardwareChain(port, BOARD_COUNT, .001)
+    hc = HardwareChain(port, BOARD_COUNT, write_delay=.001, only_board=int(sys.argv[2]))
     for i in range(BOARD_COUNT):
         for j in range(5):
             hc.beacon(i)
@@ -144,12 +144,19 @@ class FrameTouch(object):
         return res
 
 class HardwareChain(object):
-    def __init__(self, port, length, write_delay=.001):
+    def __init__(self, port, length, only_board=None, write_delay=.001):
         self.port = port
         self.length = length
         self.write_delay = write_delay
-        self.light_frames = [FrameLights(addr, self) for addr in range(self.length)]
-        self.touch_frames = [FrameTouch(addr, 20, self) for addr in range(self.length)]
+        self.only_board = only_board
+        if self.only_board != None:
+            self.only_board -= 1
+        if self.only_board:
+            self.light_frames = [FrameLights(self.only_board, self)]
+            self.touch_frames = [FrameTouch(self.only_board, 20, self)]
+        else:
+            self.light_frames = [FrameLights(addr, self) for addr in range(self.length)]
+            self.touch_frames = [FrameTouch(addr, 20, self) for addr in range(self.length)]
         self.frame_idx = 0
 
     def set_light(self, address, idx, val):
