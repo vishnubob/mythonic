@@ -16,7 +16,8 @@ def main():
             hc.beacon(i)
         time.sleep(1)
     manager = Manager(hc)
-    def signal_handler(signal, frame):
+    def signal_handler(sig, frame):
+        signal.signal(signal.SIGINT, lambda a, b: sys.exit(1))
         print "ENTERED SIGNAL_HANDLER"
         manager.blackout()
         for i in range(100):
