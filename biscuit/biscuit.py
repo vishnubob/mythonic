@@ -1,22 +1,29 @@
 #!/usr/bin/env python
 
-import sys
 import serial
+import signal
+import sys
 import time
 
-BOARD_COUNT = 3
+BOARD_COUNT = 1
+DEBUG_REFRESH = False
 
 def main():
     port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
     hc = HardwareChain(port, BOARD_COUNT, .001)
-    hc.beacon(0)
-    time.sleep(.5)
-    hc.beacon(1)
-    time.sleep(.5)
-    hc.beacon(2)
-    time.sleep(.5)
-    man = Manager(hc)
-    man.run()
+    for i in range(BOARD_COUNT):
+        for j in range(5):
+            hc.beacon(i)
+        time.sleep(1)
+    manager = Manager(hc)
+    def signal_handler(signal, frame):
+        print "ENTERED SIGNAL_HANDLER"
+        manager.blackout()
+        for i in range(BOARD_COUNT * 2):
+            manager.cycle()
+        sys.exit(0)
+    signal.signal(signal.SIGINT, signal_handler)
+    manager.run()
 
 class FrameLights(object):
     def __init__(self, address, hc):
@@ -171,11 +178,14 @@ class HardwareChain(object):
         port.write(chr(addr))
 
     def refresh(self):
+        if DEBUG_REFRESH: print "refreshing"
         touch_data = self.touch_frames[self.frame_idx]
         touch_data.go()
+        if DEBUG_REFRESH: print "touch data is go"
         time.sleep(.01)
         light_data = self.light_frames[self.frame_idx]
         light_data.go()
+        if DEBUG_REFRESH: print "light data is go"
         self.frame_idx = (self.frame_idx + 1) % self.length
 
     def send_light_data(self, address, light_data):
@@ -208,6 +218,12 @@ class HardwareChain(object):
 class Manager(object):
     def __init__(self, hc):
         self.hc = hc
+        self.initialized_at = time.time()
+
+    def blackout(self):
+        for lf in self.hc.light_frames:
+            for i in range(6):
+                lf.set_light(i, 0)
 
     def boot(self, cycles=100):
         # run the system for a while
@@ -228,6 +244,13 @@ class Manager(object):
         """
         Implements business logic.
         """
+        colors = ["RED", "BLANK", "GREEN", "BLUE", "WHITE", "UV"]
+        for lf in self.hc.light_frames:
+            idx = int((time.time() - self.initialized_at) % 6)
+            last_idx = 5 if idx == 0 else idx - 1
+            lf.set_light(last_idx, 0)
+            lf.set_light(idx, 255)
+            print colors[idx], idx, lf.address
         triggers = self.hc.get_touch_triggers()
         for vals in triggers:
             for val in vals:
