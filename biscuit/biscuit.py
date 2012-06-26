@@ -4,26 +4,52 @@ import serial
 import signal
 import sys
 import time
+import argparse
 
-BOARD_COUNT = 1
+BOARD_COUNT = 3
 DEBUG_REFRESH = False
 
+DEFAULTS = {
+    'only_boards': None,
+    'count_boards': None,
+}
+
+def get_cli():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(dest="port", nargs=1, help="The port of the RS-485 dongle.")
+    parser.add_argument('-o', '--only', dest="only_boards", help="comma seperated list of boards")
+    parser.add_argument('-c', "--count", type=int, dest="count_boards", help="Count of contiguous boards")
+    parser.set_defaults(**DEFAULTS)
+    args = parser.parse_args()
+    args.port = args.port[0]
+    return args
+
 def main():
-    port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
-    hc = HardwareChain(port, BOARD_COUNT, write_delay=.001, only_board=int(sys.argv[2]))
-    for i in range(BOARD_COUNT):
-        for j in range(5):
-            hc.beacon(i)
-        time.sleep(1)
+    args = get_cli()
+    only_boards = None
+    count_boards = None
+    if args.only_boards and args.count_boards:
+        print "only boards and count are mutually exclusive."
+        sys.exit(-1)
+    port = serial.Serial(args.port, baudrate=1000000, parity=serial.PARITY_EVEN)
+    if args.only_boards:
+        only_boards = args.only_boards
+        only_boards = [int(x) - 1 for x in set(only_boards.split(','))]
+        only_boards.sort()
+        hc = HardwareChain(port, max(only_boards), write_delay=.001, only_boards=only_boards)
+    if args.count_boards:
+        count_boards = int(args.count_boards)
+        hc = HardwareChain(port, count_boards, write_delay=.001)
     manager = Manager(hc)
-    def signal_handler(signal, frame):
-        print "ENTERED SIGNAL_HANDLER"
+    manager.beacon()
+    try:
+        manager.run()
+    except:
         manager.blackout()
-        for i in range(BOARD_COUNT * 2):
+        for i in range(100):
             manager.cycle()
-        sys.exit(0)
-    signal.signal(signal.SIGINT, signal_handler)
-    manager.run()
+            time.sleep(.001)
+        raise
 
 class FrameLights(object):
     def __init__(self, address, hc):
@@ -144,20 +170,18 @@ class FrameTouch(object):
         return res
 
 class HardwareChain(object):
-    def __init__(self, port, length, only_board=None, write_delay=.001):
+    def __init__(self, port, length, write_delay=.001, only_boards=None):
         self.port = port
-        self.length = length
         self.write_delay = write_delay
-        self.only_board = only_board
-        if self.only_board != None:
-            self.only_board -= 1
-        if self.only_board:
-            self.light_frames = [FrameLights(self.only_board, self)]
-            self.touch_frames = [FrameTouch(self.only_board, 20, self)]
-        else:
-            self.light_frames = [FrameLights(addr, self) for addr in range(self.length)]
-            self.touch_frames = [FrameTouch(addr, 20, self) for addr in range(self.length)]
+        self.addresses = range(length) if only_boards is None else only_boards
+        self.addresses.sort()
+        self.light_frames = [FrameLights(addr, self) for addr in self.addresses]
+        self.touch_frames = [FrameTouch(addr, 20, self) for addr in self.addresses]
         self.frame_idx = 0
+
+    @property
+    def length(self):
+        return len(self.addresses)
 
     def set_light(self, address, idx, val):
         self.light_frames[address].set_light(idx, val)
@@ -178,6 +202,7 @@ class HardwareChain(object):
         return [obj.normalize() for obj in self.touch_frames]
 
     def beacon(self, addr):
+        print "BEACONING ", addr + 1
         cmd = 0x80 | ord('B')
         port = self.port
         port.write(chr(cmd))
@@ -185,7 +210,7 @@ class HardwareChain(object):
         port.write(chr(addr))
 
     def refresh(self):
-        if DEBUG_REFRESH: print "refreshing"
+        if DEBUG_REFRESH: print "refreshing ", self.addresses[self.frame_idx] + 1
         touch_data = self.touch_frames[self.frame_idx]
         touch_data.go()
         if DEBUG_REFRESH: print "touch data is go"
@@ -231,6 +256,13 @@ class Manager(object):
         for lf in self.hc.light_frames:
             for i in range(6):
                 lf.set_light(i, 0)
+
+    def beacon(self, pause=1, repeat=5):
+        for addr in self.hc.addresses:
+            for r in range(repeat):
+                self.hc.beacon(addr)
+                time.sleep(pause / 2.0)
+            time.sleep(pause)
 
     def boot(self, cycles=100):
         # run the system for a while
