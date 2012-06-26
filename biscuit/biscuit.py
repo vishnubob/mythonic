@@ -5,20 +5,23 @@ import signal
 import sys
 import time
 
-BOARD_COUNT = 1
+BOARD_COUNT = 3
 DEBUG_REFRESH = False
 
 def main():
+    only_boards = None
+    if len(sys.argv) >= 3:
+        only_boards = [int(x) - 1 for x in set(sys.argv[2:])]
     port = serial.Serial(sys.argv[1], baudrate=1000000, parity=serial.PARITY_EVEN)
-    hc = HardwareChain(port, BOARD_COUNT, write_delay=.001, only_board=int(sys.argv[2]))
-    for i in range(BOARD_COUNT):
-        for j in range(5):
-            hc.beacon(i)
+    hc = HardwareChain(port, BOARD_COUNT, write_delay=.001, only_boards=only_boards)
+    for addr in hc.addresses:
+        for i in range(10):
+            hc.beacon(addr)
         time.sleep(1)
     manager = Manager(hc)
     def signal_handler(sig, frame):
         signal.signal(signal.SIGINT, lambda a, b: sys.exit(1))
-        print "ENTERED SIGNAL_HANDLER"
+        print "Entered signal handler. cntrl+c again if we don't exit soon"
         manager.blackout()
         for i in range(100):
             manager.cycle()
@@ -145,20 +148,18 @@ class FrameTouch(object):
         return res
 
 class HardwareChain(object):
-    def __init__(self, port, length, only_board=None, write_delay=.001):
+    def __init__(self, port, length, write_delay=.001, only_boards=None):
         self.port = port
-        self.length = length
         self.write_delay = write_delay
-        self.only_board = only_board
-        if self.only_board != None:
-            self.only_board -= 1
-        if self.only_board:
-            self.light_frames = [FrameLights(self.only_board, self)]
-            self.touch_frames = [FrameTouch(self.only_board, 20, self)]
-        else:
-            self.light_frames = [FrameLights(addr, self) for addr in range(self.length)]
-            self.touch_frames = [FrameTouch(addr, 20, self) for addr in range(self.length)]
+        self.addresses = range(length) if only_boards is None else only_boards
+        self.addresses.sort()
+        self.light_frames = [FrameLights(addr, self) for addr in self.addresses]
+        self.touch_frames = [FrameTouch(addr, 20, self) for addr in self.addresses]
         self.frame_idx = 0
+
+    @property
+    def length(self):
+        return len(self.addresses)
 
     def set_light(self, address, idx, val):
         self.light_frames[address].set_light(idx, val)
@@ -179,6 +180,7 @@ class HardwareChain(object):
         return [obj.normalize() for obj in self.touch_frames]
 
     def beacon(self, addr):
+        print "BEACONING ", addr + 1
         cmd = 0x80 | ord('B')
         port = self.port
         port.write(chr(cmd))
@@ -186,7 +188,7 @@ class HardwareChain(object):
         port.write(chr(addr))
 
     def refresh(self):
-        if DEBUG_REFRESH: print "refreshing"
+        if DEBUG_REFRESH: print "refreshing ", self.addresses[self.frame_idx] + 1
         touch_data = self.touch_frames[self.frame_idx]
         touch_data.go()
         if DEBUG_REFRESH: print "touch data is go"
