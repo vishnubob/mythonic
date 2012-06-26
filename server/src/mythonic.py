@@ -11,57 +11,7 @@ from biscuit import Manager
 from pictureframe import PictureFrame
 
 class MythonicPictureFrame(PictureFrame):
-
-    def __init__(self, address, hc, main_tracks=[], bonus_tracks=[]):
-        self.main_tracks = main_tracks
-        self.bonus_tracks = bonus_tracks
-        super(MythonicPictureFrame, self).__init__(address, hc)
-
-    def mute(self):
-        self.mute_bonus()
-        self.mute_main()
-
-    def mute_main(self):
-        for track in self.main_tracks:
-            track.mute()
-
-    def unmute_main(self):
-        for track in self.main_tracks:
-            track.unmute()
-
-    def mute_bonus(self):
-        for track in self.bonus_tracks:
-            track.mute()
-
-    def unmute_bonus(self):
-        for track in self.bonus_tracks:
-            track.unmute()
-
-    def step_inactive(self):
-        """
-        Effects for when this frame has either not been activated yet
-        or has been deactivated.
-        """
-
-    def step_active(self):
-        """
-        Effects for when this frame has been activated.
-        """
-
-    def step_active_hint(self):
-        """
-        Hints that this activated picture frame is part of a pattern
-        """
-
-    def step_inactive_hint(self):
-        """
-        Hints that this inactive picture frame is part of a pattern
-        """
-
-    def step_bonus(self):
-        """
-        Effects for when this frame is part of a completed pattern
-        """
+    pass
 
 class MythonicTrack(midi.Track):
     """
@@ -83,29 +33,22 @@ class MythonicTrack(midi.Track):
             event.tick = event.tick + increase
 
     def mute(self):
-        if self.muted:
-            return
-        for event in self.note_on_events:
-            # Record last unmuted value in case there were changes to it
-            self._velocities[id(event)] = event.velocity
-            event.velocity = 0
+        if not self._muted:
+            for event in self.note_on_events:
+                # Record last unmuted value in case there were changes to it
+                self._velocities[id(event)] = event.velocity
+                event.velocity = 0
         self._muted = True
 
     def unmute(self):
-        if not self.muted:
-            return
-        for event in self.note_on_events:
-            event.velocity = self._velocities[id(event)]
+        if self._muted:
+            for event in self.note_on_events:
+                event.velocity = self._velocities[id(event)]
         self._muted = False
 
-    def get_note_on_events(self):
+    @property
+    def note_on_events(self):
         return filter(lambda e: isinstance(e, midi.NoteOnEvent), self)
-    note_on_events = property(get_note_on_events)
-
-    def get_muted(self):
-        return self._muted
-    muted = property(get_muted)
-
 
 #class MusicBox(midi.Pattern):
 class MusicBox(object):
@@ -197,18 +140,19 @@ class MythonicManager(Manager):
     MythonicPictureFrame instances and subclasses thereof.
     """
 
-    def __init__(self, hc, picture_frames, patterns=[], music_box=None):
+    def __init__(self, hc, picture_frames, patterns=[]):
         super(MythonicManager, self).__init__(hc)
         if len(picture_frames) != hc.length:
             raise ValueError("picture_frames length must match HardwareChain")
         self.picture_frames = picture_frames
         self.patterns = patterns
-        self.music_box = music_box
         self.active_frames = []
         self.touch_history = {}
         self.initialized_at = time.time()
+        # Number of seconds before the screen saver icks in
 
-    def get_untouched_for(self):
+    @property
+    def untouched_for(self):
         """
         Number of seconds the picture frames have gone untouched
         """
@@ -217,13 +161,13 @@ class MythonicManager(Manager):
         else:
             untouched_since = self.initialized_at
         return time.time() - untouched_since
-    untouched_for = property(get_untouched_for)
 
     def blackout(self):
         for pf in self.picture_frames:
             pf.blackout()
 
-    def get_target_pattern(self, additional=[]):
+    @property
+    def target_pattern(self, additional=[]):
         considered = additional + self.active_frames
         for pattern in self.patterns:
             # All active frames must be within a pattern
@@ -231,7 +175,6 @@ class MythonicManager(Manager):
             if considered <= pattern and pattern[0] <= considered:
                 return pattern
         return None
-    target_pattern = property(get_target_pattern)
 
     def activate(self, pf):
         self.active_frames.append(pf)
@@ -245,15 +188,13 @@ class MythonicManager(Manager):
     def in_target_pattern(self, pf):
         return self.target_pattern is not None and pf in self.target_pattern
 
-    def is_pattern_complete(self):
+    @property
+    def pattern_complete(self):
         return self.active_frames == self.target_pattern
-    pattern_complete = property(is_pattern_complete)
 
-    def _get_touched(self):
+    def clear_touched(self):
         """
-        Returns picture frames that were touched.
-
-        Clears triggers.
+        Returns picture frames that were last touched and clears triggers.
         """
         now = time.time()
         touched = set()
@@ -265,37 +206,3 @@ class MythonicManager(Manager):
                 self.touch_history[now].add(pf)
                 touched.add(pf)
         return touched
-
-    def think(self):
-        """
-        Entertain the burners and burn-heads
-        """
-        now = time.time()
-        # Collect touch data
-        touched = self._get_touched()
-        # Update picture frames
-        for pf in self.picture_frames:
-            print self.untouched_for
-            if self.untouched_for > 6:
-                pf.step_screensaver()
-                continue
-            if pf in touched:
-                # Handle (de)activation by touch
-                if self.is_active(pf):
-                    self.deactivate(pf)
-                else:
-                    self.activate(pf)
-            if self.is_active(pf):
-                pf.step_active()
-                if self.in_target_pattern(pf):
-                    if self.pattern_complete:
-                        # Frame is part of exclusive and complete pattern
-                        pf.step_bonus()
-                    else:
-                        # Frame is in pattern, but pattern is incomplete
-                        pf.step_active_hint()
-            else:
-                # Frame is inactive
-                pf.step_inactive()
-        if self.music_box is not None:
-            self.music_box.step()

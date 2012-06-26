@@ -4,6 +4,7 @@ midi:
 
 patterns:
     - [0, 1]
+    - [2]
 
 frames:
     - address: 0
@@ -14,6 +15,38 @@ frames:
 
     - address: 2
       main_tracks: [3]
+#
+#    - address: 3
+#
+#    - address: 4
+#
+#    - address: 5
+#
+#    - address: 6
+#
+#    - address: 7
+#
+#    - address: 8
+#
+#    - address: 8
+#
+#    - address: 2
+#
+#    - address: 2
+#
+#    - address: 2
+#
+#    - address: 2
+#
+#    - address: 2
+#
+#    - address: 2
+#
+#    - address: 2
+#
+#    - address: 2
+#
+#    - address: 2
 
 # TODO
 # * named patterns
