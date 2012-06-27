@@ -1,55 +1,7 @@
 #!/usr/bin/env python
 
-import serial
-import signal
 import sys
 import time
-import argparse
-
-BOARD_COUNT = 3
-DEBUG_REFRESH = False
-
-DEFAULTS = {
-    'only_boards': None,
-    'count_boards': None,
-}
-
-def get_cli():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(dest="port", nargs=1, help="The port of the RS-485 dongle.")
-    parser.add_argument('-o', '--only', dest="only_boards", help="comma seperated list of boards")
-    parser.add_argument('-c', "--count", type=int, dest="count_boards", help="Count of contiguous boards")
-    parser.set_defaults(**DEFAULTS)
-    args = parser.parse_args()
-    args.port = args.port[0]
-    return args
-
-def main():
-    args = get_cli()
-    only_boards = None
-    count_boards = None
-    if args.only_boards and args.count_boards:
-        print "only boards and count are mutually exclusive."
-        sys.exit(-1)
-    port = serial.Serial(args.port, baudrate=1000000, parity=serial.PARITY_EVEN)
-    if args.only_boards:
-        only_boards = args.only_boards
-        only_boards = [int(x) - 1 for x in set(only_boards.split(','))]
-        only_boards.sort()
-        hc = HardwareChain(port, max(only_boards), write_delay=.001, only_boards=only_boards)
-    if args.count_boards:
-        count_boards = int(args.count_boards)
-        hc = HardwareChain(port, count_boards, write_delay=.001)
-    manager = Manager(hc)
-    manager.beacon()
-    try:
-        manager.run()
-    except:
-        manager.blackout()
-        for i in range(100):
-            manager.cycle()
-            time.sleep(.001)
-        raise
 
 class FrameLights(object):
     def __init__(self, address, hc):
@@ -82,7 +34,7 @@ class FrameLights(object):
         self.flip()
 
 class Average(list):
-    def __init__(self, size, fresh_ttl=60):
+    def __init__(self, size, fresh_ttl=20):
         self.size = size
         avglist = [0] * self.size
         self.idx = 0
@@ -109,11 +61,16 @@ class Average(list):
             self.disabled = False
         return self.disabled
 
-    def average(self, cheat_flag=False):
-        data = self[:]
-        if cheat_flag:
-            del data[self.idx]
-        return sum(data) / float(self.size)
+    def average(self, last_vals=None):
+        _sum = 0
+        if last_vals:
+            _sz = last_vals
+            for x in range(last_vals):
+                _sum += self[((self.idx - x) % self.size)]
+        else:
+            _sz = self.size
+            _sum = sum(self)
+        return _sum / float(_sz)
 
     def peek(self):
         last_idx = (self.idx - 1) % self.size
@@ -155,6 +112,9 @@ class FrameTouch(object):
 
     def normalize(self):
         return [obj.normalize() for obj in self.order]
+
+    def get_thresholds(self):
+        return [obj.threshold for obj in self.order]
 
     def go(self):
         self.order[self.idx].push(self.hc.get_touch_data(self.address))
@@ -198,11 +158,13 @@ class HardwareChain(object):
     def get_touch_peeks(self):
         return [obj.peek() for obj in self.touch_frames]
 
+    def get_touch_thresholds(self):
+        return [obj.get_thresholds() for obj in self.touch_frames]
+
     def normalize_touch(self):
         return [obj.normalize() for obj in self.touch_frames]
 
     def beacon(self, addr):
-        print "BEACONING ", addr + 1
         cmd = 0x80 | ord('B')
         port = self.port
         port.write(chr(cmd))
@@ -210,14 +172,11 @@ class HardwareChain(object):
         port.write(chr(addr))
 
     def refresh(self):
-        if DEBUG_REFRESH: print "refreshing ", self.addresses[self.frame_idx] + 1
         touch_data = self.touch_frames[self.frame_idx]
         touch_data.go()
-        if DEBUG_REFRESH: print "touch data is go"
         time.sleep(.01)
         light_data = self.light_frames[self.frame_idx]
         light_data.go()
-        if DEBUG_REFRESH: print "light data is go"
         self.frame_idx = (self.frame_idx + 1) % self.length
 
     def send_light_data(self, address, light_data):
@@ -256,6 +215,10 @@ class Manager(object):
         for lf in self.hc.light_frames:
             for i in range(6):
                 lf.set_light(i, 0)
+        # XXX: this is an ugly hack
+        for i in range(100):
+            self.cycle()
+            time.sleep(.001)
 
     def beacon(self, pause=1, repeat=5):
         for addr in self.hc.addresses:
@@ -271,7 +234,7 @@ class Manager(object):
         for x in range(cycles):
             self.cycle()
         self.hc.normalize_touch()
-        print "BOOTED"
+        print "Booted"
 
     def run(self):
         self.boot()
@@ -280,29 +243,12 @@ class Manager(object):
             self.think()
 
     def think(self):
-        """
-        Implements business logic.
-        """
-        colors = ["RED", "BLANK", "GREEN", "BLUE", "WHITE", "UV"]
-        for lf in self.hc.light_frames:
-            idx = int((time.time() - self.initialized_at) % 6)
-            last_idx = 5 if idx == 0 else idx - 1
-            lf.set_light(last_idx, 0)
-            lf.set_light(idx, 255)
-            print colors[idx], idx, lf.address
-        triggers = self.hc.get_touch_triggers()
-        for vals in triggers:
-            for val in vals:
-                if val:
-                    print triggers
-                    print self.hc.get_touch_averages()
-                    print self.hc.get_touch_peeks()
-                    print
-                    return
+        pass
 
     def cycle(self):
         # check to see if there is any input
         self.hc.refresh()
+        time.sleep(.001)
 
 if __name__ == '__main__':
     main()
