@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+import os
+
 import midi
 
-mf = midi.read_midifile("Percussion_Dance_Rhythm.mid")
+path = os.path.dirname(__file__) + "/Percussion_Dance_Rhythm.mid"
+mf = midi.read_midifile(path)
 drumset = set()
 
 track = mf[0]
