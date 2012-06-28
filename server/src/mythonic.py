@@ -231,17 +231,17 @@ class MusicBox(object):
         self.tracks = map(MythonicTrack, pattern)
         self.original_max_cursor = self.max_cursor
 
-    def get_ticks_per_s(self):
+    @property
+    def ticks_per_s(self):
         return self.tempo / float(self.resolution)
-    ticks_per_s = property(get_ticks_per_s)
 
-    def get_resolution(self):
+    @property
+    def resolution(self):
         return self.pattern.resolution
-    resolution = property(get_resolution)
 
-    def get_tempo(self):
+    @property
+    def tempo(self):
         return 60 * 1000000 / self.midi_seq.sequencer_tempo
-    tempo = property(get_tempo)
 
     @property
     def max_cursor(self):
