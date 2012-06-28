@@ -26,7 +26,9 @@ class SimulatedHC(object):
         return [[touched] * 4]
 
 picture_frames = [ss.SSPictureFrame()]
-effects_manager = ss.SSManager(picture_frames, [], None)
+patterns = []
+patterns = [[picture_frames[0]]]
+effects_manager = ss.SSManager(picture_frames, patterns, None)
 hc = SimulatedHC()
 manager = mythonic.DelegationManager(hc, effects_manager)
 

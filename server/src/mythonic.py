@@ -1,17 +1,183 @@
 """
-The business logic for Sonic Storyboard
+Mythonic core creative classes
 """
 
+import colorsys
 import math
 import time
 
 import midi
 
-from biscuit import Manager
-from pictureframe import PictureFrame
+import biscuit
 
-class MythonicPictureFrame(PictureFrame):
-    pass
+class PictureFrame(object):
+    MAX_RED = 0xff
+    MIN_RED = 0x0
+
+    MAX_GREEN = 0xff
+    MIN_GREEN = 0x0
+
+    MAX_BLUE = 0xff
+    MIN_BLUE = 0x0
+
+    MAX_WHITE = 0xff
+    MIN_WHITE = 0x0
+
+    MAX_UV = 0xff
+    MIN_UV = 0x0
+
+    def __init__(self):
+        self.red = self.MIN_RED
+        self.green = self.MIN_GREEN
+        self.blue = self.MIN_BLUE
+        self.white = self.MIN_WHITE
+        self.uv = self.MIN_UV
+        self._touched = False
+        self._active = False
+        self.touch_history = []
+
+    def color_property(color, minimum, maximum):
+        """
+        Creates a property instance for the given color
+        with bounds checking on assignment.
+        """
+        attr = "_" + color
+        def getcolor(self):
+            return self.__dict__[attr]
+        def setcolor(self, intensity):
+            if intensity > maximum or intensity < minimum:
+                raise ValueError(color + " intensity of " + str(intensity) + " is out of bounds.")
+            self.__dict__[attr] = intensity
+        return property(getcolor, setcolor)
+
+    red = color_property("red", MIN_RED, MAX_RED)
+    green = color_property("green", MIN_GREEN, MAX_GREEN)
+    blue = color_property("blue", MIN_BLUE, MAX_BLUE)
+    white = color_property("white", MIN_WHITE, MAX_WHITE)
+    uv = color_property("uv", MIN_UV, MAX_UV)
+
+    def touch(self):
+        self.touch_history.append(time.time())
+        if self.active:
+            self.deactivate()
+        else:
+            self.activate()
+        self._touched = True
+    touched = property(lambda self: self._touched)
+
+    def activate(self):
+        self._active = True
+    def deactivate(self):
+        self._active = False
+    active = property(lambda self: self._active)
+
+    @property
+    def hsv(self):
+        red = max(self.MIN_RED, self.red / float(self.MAX_RED))
+        green = max(self.MIN_GREEN, self.green / float(self.MAX_GREEN))
+        blue = max(self.MIN_BLUE, self.blue / float(self.MAX_BLUE))
+        return colorsys.rgb_to_hsv(red, green, blue)
+    @hsv.setter
+    def hsv(self, hsv):
+        rgb = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2])
+        self.red = int(rgb[0] * self.MAX_RED)
+        self.green = int(rgb[1] * self.MAX_GREEN)
+        self.blue = int(rgb[2] * self.MAX_BLUE)
+
+    def blackout(self):
+        self.red = self.MIN_RED
+        self.green = self.MIN_GREEN
+        self.blue = self.MIN_BLUE
+        self.uv = self.MIN_UV
+        self.white = self.MIN_WHITE
+
+class DelegationManager(biscuit.Manager):
+    """
+    Reads state of hardware, updates picture frames, and
+    then delegates to the effects manager.
+
+    After delegation to the effects manager, reads state of
+    picture frames and sends the appropriate updates to the hardware.
+    """
+
+    RED_IDX = 0
+    GREEN_IDX = 2
+    BLUE_IDX = 3
+    WHITE_IDX = 4
+    UV_IDX = 5
+
+    def __init__(self, hc, effects_manager):
+        self.hc = hc
+        self.effects_manager = effects_manager
+
+    def think(self):
+        picture_frames = self.effects_manager.picture_frames
+        for addr, directions in enumerate(self.hc.get_touch_triggers()):
+            if reduce(lambda a, b: a or b, directions):
+                picture_frames[addr].touch()
+        self.effects_manager.update()
+        for addr, pf in enumerate(picture_frames):
+            self.hc.set_light(addr, self.RED_IDX, pf.red)
+            self.hc.set_light(addr, self.GREEN_IDX, pf.green)
+            self.hc.set_light(addr, self.BLUE_IDX, pf.blue)
+            self.hc.set_light(addr, self.WHITE_IDX, pf.white)
+            self.hc.set_light(addr, self.UV_IDX, pf.uv)
+
+class EffectsManager(object):
+    """
+    Manages effects by modifying PictureFrame instances.
+    """
+
+    def __init__(self, picture_frames, patterns=[]):
+        self.picture_frames = picture_frames
+        self.patterns = patterns
+        self.initialized_at = time.time()
+
+    def update(self):
+        """
+        Manage effects
+        """
+
+    @property
+    def run_time(self):
+        return time.time() - self.initialized_at
+
+    @property
+    def touched_frames(self):
+        return filter(lambda pf: pf.touched, self.picture_frames)
+
+    @property
+    def active_frames(self):
+        return filter(lambda pf: pf.active, self.picture_frames)
+
+    @property
+    def untouched_for(self):
+        """
+        Number of seconds since creation we have gone without a touch
+        """
+        most_recent = self.initialized_at
+        for history in [pf.touch_history for pf in self.picture_frames]:
+            most_recent = max(history + [most_recent])
+        return time.time() - most_recent
+
+    @property
+    def pattern_complete(self):
+        return self.active_frames == self.target_pattern
+    @property
+    def target_pattern(self):
+        """
+        To be the "target pattern"
+          1. all active frames must be within the pattern
+          2. the  start of pattern must be an active frame
+        """
+        considered = self.active_frames
+        for pattern in self.patterns:
+            if considered <= pattern and pattern[0] <= considered:
+                return pattern
+        return None
+
+    def in_target_pattern(self, pf):
+        return self.target_pattern is not None and pf in self.target_pattern
 
 class MythonicTrack(midi.Track):
     """
@@ -77,9 +243,9 @@ class MusicBox(object):
         return 60 * 1000000 / self.midi_seq.sequencer_tempo
     tempo = property(get_tempo)
 
-    def get_max_cursor(self):
+    @property
+    def max_cursor(self):
         return max(event.tick for track in self.tracks for event in track)
-    max_cursor = property(get_max_cursor)
 
     def increment_tick_cursor(self):
         if self.tick_cursor >= self.max_cursor:
@@ -88,16 +254,17 @@ class MusicBox(object):
         self.tick_cursor += 1
         self.last_cursor_update = time.time()
 
-    def get_ticks_transpired(self):
+    @property
+    def ticks_transpired(self):
         if self.last_cursor_update is not None:
             start = self.last_cursor_update
             end = time.time()
             return int((end - start) * self.ticks_per_s)
         else:
            return 1
-    ticks_transpired = property(get_ticks_transpired)
 
-    def get_events_by_tick(self):
+    @property
+    def events_by_tick(self):
         events_by_tick = {}
         for track in self.tracks:
             for event in track:
@@ -105,7 +272,6 @@ class MusicBox(object):
                     events_by_tick[event.tick] = []
                 events_by_tick[event.tick] += [event]
         return events_by_tick
-    events_by_tick = property(get_events_by_tick)
 
     def step(self):
         """
@@ -131,78 +297,3 @@ class MusicBox(object):
             print "WARNING! event_write buf < 1000"
             time.sleep(.5)
         return buf
-
-class MythonicManager(Manager):
-    """
-    Generic manager that implements concepts like patterns and
-    picture frame activation, making use of mythonic class features
-
-    MythonicPictureFrame instances and subclasses thereof.
-    """
-
-    def __init__(self, hc, picture_frames, patterns=[]):
-        super(MythonicManager, self).__init__(hc)
-        if len(picture_frames) != hc.length:
-            raise ValueError("picture_frames length must match HardwareChain")
-        self.picture_frames = picture_frames
-        self.patterns = patterns
-        self.active_frames = []
-        self.touch_history = {}
-        self.initialized_at = time.time()
-        # Number of seconds before the screen saver icks in
-
-    @property
-    def untouched_for(self):
-        """
-        Number of seconds the picture frames have gone untouched
-        """
-        if len(self.touch_history) > 0:
-            untouched_since = max(self.touch_history.keys())
-        else:
-            untouched_since = self.initialized_at
-        return time.time() - untouched_since
-
-    def blackout(self):
-        for pf in self.picture_frames:
-            pf.blackout()
-
-    @property
-    def target_pattern(self, additional=[]):
-        considered = additional + self.active_frames
-        for pattern in self.patterns:
-            # All active frames must be within a pattern
-            # and start of pattern must be an active frame
-            if considered <= pattern and pattern[0] <= considered:
-                return pattern
-        return None
-
-    def activate(self, pf):
-        self.active_frames.append(pf)
-
-    def deactivate(self, pf):
-        self.active_frames.remove(pf)
-
-    def is_active(self, pf):
-        return pf in self.active_frames
-
-    def in_target_pattern(self, pf):
-        return self.target_pattern is not None and pf in self.target_pattern
-
-    @property
-    def pattern_complete(self):
-        return self.active_frames == self.target_pattern
-
-    def clear_touched(self):
-        """
-        Returns picture frames that were last touched and clears triggers.
-        """
-        now = time.time()
-        touched = set()
-        for idx, directions in enumerate(self.hc.get_touch_triggers()):
-            if reduce(lambda a, b: a or b, directions):
-                pf = self.picture_frames[idx]
-                if now not in self.touch_history:
-                    self.touch_history[now] = set()
-                self.touch_history[now].add(pf)
-                touched.add(pf)
-        return touched

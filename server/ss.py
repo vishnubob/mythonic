@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import colorsys
 import math
 import random
 import serial
@@ -13,10 +12,14 @@ import yaml
 import midi.sequencer
 import midi
 
-from mythonic import MythonicManager
-from mythonic import MythonicPictureFrame
+from mythonic import EffectsManager
+from mythonic import PictureFrame
 from mythonic import MusicBox
+from mythonic import DelegationManager
 from biscuit import HardwareChain
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4, depth=7)
 
 def main():
     if len(sys.argv) not in [3, 5]:
@@ -34,14 +37,6 @@ def main():
     manager = load_manager(tty_dev, yaml.load(config_stream), client, port)
     config_stream.close()
 
-    def signal_handler(signal, frame):
-        manager.blackout()
-        for i in range(len(manager.picture_frames) * 2):
-            manager.cycle()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-
     manager.run()
 
 def make_music_box(client, port, path):
@@ -58,23 +53,29 @@ def load_manager(tty_dev, config, midi_client, midi_port):
 
     picture_frames = []
     for pf_config in config["frames"]:
-        tracks = [music_box.tracks[i] for i in pf_config["main_tracks"]]
+        main_tracks = []
+        if "main_tracks" in  pf_config:
+            main_tracks = [music_box.tracks[i] for i in pf_config["main_tracks"]]
+        bonus_tracks = []
+        if "bonus_tracks" in  pf_config:
+            tracks = [music_box.tracks[i] for i in pf_config["bonus_tracks"]]
         address = int(pf_config["address"])
-        pf = SSPictureFrame(address, hc, tracks)
+        pf = SSPictureFrame(main_tracks, bonus_tracks)
         picture_frames.append(pf)
 
     # Patterns of picture frames.
     patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
-    # Hardware/file components
-    return SSManager(hc, picture_frames, patterns, music_box)
+    return DelegationManager(hc, SSManager(picture_frames, patterns, music_box))
 
-class SSPictureFrame(MythonicPictureFrame):
+class SSPictureFrame(PictureFrame):
 
-    def __init__(self, address, hc, main_tracks=[], bonus_tracks=[]):
+    # TODO: Move all Track handling to SSManager
+
+    def __init__(self, main_tracks=[], bonus_tracks=[]):
         self.main_tracks = main_tracks
         self.bonus_tracks = bonus_tracks
-        super(MythonicPictureFrame, self).__init__(address, hc)
+        super(self.__class__, self).__init__()
 
     def mute(self):
         self.mute_main()
@@ -86,7 +87,7 @@ class SSPictureFrame(MythonicPictureFrame):
 
     def unmute_main(self):
         for track in self.main_tracks:
-            track.unmute()
+           track.unmute()
 
     def mute_bonus(self):
         for track in self.bonus_tracks:
@@ -96,141 +97,121 @@ class SSPictureFrame(MythonicPictureFrame):
         for track in self.bonus_tracks:
             track.unmute()
 
-    def step_screensaver(self):
+    def step_screensaver(self, offset):
         """
         Called when screen saver is active
         """
-        print "screenserver: ", self.address
-        t = time.time() + self.address
-        self.mute()
+        print "screenserver: ", offset
+        t = time.time() + offset
         self.blackout()
         self.uv = int(abs((math.sin(t) * self.MAX_UV) / 10))
 
-    def step_inactive(self):
+    def step_inactive(self, offset):
         """
         Effects for when this frame is not active and not screensavering
 
         Shine only white light at 1/3rd intensity.
         """
-        print "inactive: ", self.address
+        print "inactive: ", offset
         self.mute()
         self.blackout()
         self.white = self.MAX_WHITE / 3
 
-    def step_active(self):
+    def step_active(self, offset):
         """
         Effects for after a picture frame has been activated.
 
         Minimize white and do a steady overlaping fade of RGB and UV.
         """
-        print "active: ", self.address
-        t = time.time() + self.address
+        print "active: ", offset
+        t = time.time() + offset
         self.unmute_main()
         self.white = self.MIN_WHITE
         self.hsv = (abs(math.sin(t * 0.5)), 1, 0.5)
         self.uv = int(abs(math.sin(t * 0.25) * self.MAX_UV))
 
-    def step_active_hint(self):
+    def step_active_hint(self, offset):
         """
         Hint that this selectd picture frame is part of a pattern.
 
         Slowly flash UV.
         """
-        print "active_hint: ", self.address
-        t = time.time() + self.address
+        print "active_hint: ", offset
+        t = time.time() + offset
         self.uv = self.MAX_UV if math.sin(t * 2) >= 0 else self.MIN_UV
 
-    def step_bonus(self):
+    def step_bonus(self, offset):
         """
         Effects for when this frame is part of a completed pattern
 
         Play bonus tracks and shine red and only red
         """
-        print "bonus: ", self.address
-        t = time.time() + self.address
+        print "bonus: ", offset
+        t = time.time() + offset
         self.unmute_bonus()
         self.hsv = (random.random(), random.random(), random.random())
         self.uv = abs(int(random.random() * self.MAX_UV))
         self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
 
-class SSManager(MythonicManager):
+class SSManager(EffectsManager):
     """
     Runner for Sonic Storyboard.
     """
 
-    def __init__(self, hc, picture_frames, patterns, music_box):
+    def __init__(self, picture_frames, patterns, music_box=None):
         self.music_box = music_box
-        self.screensaver = Screensaver(patterns)
-        self.screensaver_timeout = 60 * 3
-        super(SSManager, self).__init__(hc, picture_frames, patterns)
+        # TODO: Get rid of this screensaver crap and implement it properly
+        self.screensaver = Screensaver(picture_frames, patterns)
+        #self.screensaver_timeout = 60 * 3
+        self.screensaver_timeout = 3
+        super(self.__class__, self).__init__(picture_frames, patterns)
 
-    def think(self):
+    def update(self):
         """
-        Entertain the burners and burn-heads
+        Manage effects
         """
-        now = time.time()
-        # Collect touch data
-        touched = self.clear_touched() # Update picture frames for pf in self.picture_frames:
-
-        # Touch activates or deactivates frames
-        for pf in touched:
-            if self.is_active(pf):
-                self.deactivate(pf)
-            else:
-                self.activate(pf)
-        # Either we handle the screen saver or handle our lovely frames
-        if len(touched) <= 0 and self.untouched_for >= self.screensaver_timeout:
+        if self.untouched_for >= self.screensaver_timeout:
             if not self.screensaver.active:
                 self.screensaver.activate()
                 for pf in self.active_frames:
-                    self.deactivate(pf)
+                    pf.deactivate()
+                    pf.blackout()
             self.screensaver.step()
         else:
             self.screensaver.deactivate()
-            # Handle effects for active frames
-            for pf in self.active_frames:
-                pf.step_active()
-                if self.in_target_pattern(pf):
-                    if self.pattern_complete:
-                        # Frame is part of exclusive and complete pattern
-                        pf.step_bonus()
-                    else:
-                        # Frame is in pattern, but pattern is incomplete
-                        pf.step_active_hint()
-            # Handle effects for innactive frames
-            for pf in set(self.picture_frames) - set(self.active_frames):
-                pf.step_inactive()
-
+            for idx, pf in enumerate(self.picture_frames):
+                if pf.active:
+                    pf.step_active(idx)
+                    if self.in_target_pattern(pf):
+                        if self.pattern_complete:
+                            pf.step_bonus(idx)
+                        else:
+                            pf.step_active_hint(idx)
+                else:
+                    pf.step_inactive(idx)
         if self.music_box is not None:
             self.music_box.step()
 
+# XXX: This is an abomination. Kill on sight. Meld into SSManager
 class Screensaver(object):
 
-    def __init__(self, patterns):
+    def __init__(self, picture_frames, patterns):
+        self.picture_frames = picture_frames
         self.patterns = list(patterns)
         self._active = False
-        self.last_change = None
         self.period_length = 5
-        self.possition = 0
 
     @property
     def current_pattern(self):
-        if self.last_change is None:
-            self.last_change = time.time()
-        elif (time.time() - self.last_change) >= self.period_length:
-            for pf in self.patterns[self.possition]:
-                pf.blackout()
-            self.possition += 1
-            if self.possition >= len(self.patterns):
-                random.shuffle(self.patterns)
-                self.possition = 0
-            self.last_change = time.time()
-        return self.patterns[self.possition]
+        if len(self.patterns) <= 0:
+            return None
+
+        idx = int(math.fmod((time.time() / self.period_length), len(self.patterns)))
+        return self.patterns[idx]
 
     def activate(self):
         if not self._active:
-            # TODO: BUG SHOULD BLACKOUT ALL NOT JUST CURRENT
-            for pf in self.current_pattern:
+            for pf in self.picture_frames:
                 pf.blackout()
         self._active = True
 
@@ -240,10 +221,10 @@ class Screensaver(object):
     active = property(lambda self: self._active)
 
     def step(self):
-        if not self.active:
+        if not self.active or self.current_pattern is None:
             return
-        for pf in self.current_pattern:
-            pf.step_screensaver()
+        for idx, pf in enumerate(self.current_pattern):
+            pf.step_screensaver(idx)
 
 if __name__ == '__main__':
     main()

@@ -15,8 +15,8 @@ frames:
 
     - address: 2
       main_tracks: [3]
-#
-#    - address: 3
+
+    - address: 3
 #
 #    - address: 4
 #
