@@ -34,7 +34,7 @@ class FrameLights(object):
         self.flip()
 
 class Average(list):
-    def __init__(self, size, fresh_ttl=20):
+    def __init__(self, size, fresh_ttl=65):
         self.size = size
         avglist = [0] * self.size
         self.idx = 0
@@ -43,7 +43,7 @@ class Average(list):
         self.last_trigger = 0
         super(Average, self).__init__(avglist)
 
-    def normalize(self, threshold=20):
+    def normalize(self, threshold=30):
         avg = self.average()
         self.threshold = avg + threshold
         #print "%s new threshold set to %.2f" % (id(self), self.threshold)
@@ -52,7 +52,7 @@ class Average(list):
         self[self.idx] = ord(val)
         self.idx = (self.idx + 1) % self.size
 
-    def disable(self, timeout=5):
+    def disable(self, timeout=10):
         self.disabled = True
         self.disabled_timeout = time.time() + timeout
 
@@ -136,7 +136,7 @@ class HardwareChain(object):
         self.addresses = range(length) if only_boards is None else only_boards
         self.addresses.sort()
         self.light_frames = [FrameLights(addr, self) for addr in self.addresses]
-        self.touch_frames = [FrameTouch(addr, 20, self) for addr in self.addresses]
+        self.touch_frames = [FrameTouch(addr, 10, self) for addr in self.addresses]
         self.frame_idx = 0
 
     @property
@@ -227,7 +227,7 @@ class Manager(object):
                 time.sleep(pause / 2.0)
             time.sleep(pause)
 
-    def boot(self, cycles=100):
+    def boot(self, cycles=200):
         # run the system for a while
         # fill the averages
         print "Booting"

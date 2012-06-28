@@ -127,16 +127,21 @@ class TestManager(biscuit.Manager):
         triggers = self.hc.get_touch_triggers()
         if self.touch_data_f:
             self.write_touch_data()
-        touch_flag = False
-        for vals in triggers:
+        touch_flag = None
+        for (idx, vals) in enumerate(triggers):
             for val in vals:
                 if val:
-                    touch_flag = True
+                    touch_flag = idx
                     break
 
-        if touch_flag:
+        if touch_flag != None:
             self.report("TOUCH!")
             self.report_touch(triggers)
+            self.hc.set_light(touch_flag, 4, 0xff)
+            for x in range(5):
+                self.cycle()
+            time.sleep(.1)
+            self.hc.set_light(touch_flag, 4, 0)
 
         ch = self.readch()
         if ch in ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'):
