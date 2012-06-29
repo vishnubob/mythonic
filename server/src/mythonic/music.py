@@ -4,8 +4,8 @@ import time
 import midi
 import midi.sequencer
 
-DEFAULT_BEATS_PER_MEASURE = 4
-DEFAULT_TEMPO = 4
+BEATS_PER_MEASURE = 4
+TEMPO = 120
 
 def main():
     if len(sys.argv) < 4:
@@ -22,14 +22,18 @@ def main():
         return
 
     patterns = [midi.read_midifile(path) for path in file_paths]
-    beats = DEFAULT_BEATS_PER_MEASURE
+    beats = BEATS_PER_MEASURE
+    tempo = TEMPO
     res = patterns[0].resolution
     tracks = []
     for pattern in patterns:
         assert(pattern.resolution == res)
-        tracks.append(Track(pattern, beats, res))
+        track = Track(pattern, beats, res)
+        tracks.append(track)
     midi_writer = make_midi_writer(client, port, res)
-    sequencer = Sequencer(tracks, midi_writer, beats, res)
+    sequencer = Sequencer(tracks, midi_writer, beats, res, tempo)
+    for track in tracks:
+        track.play()
     while True:
         sequencer.think()
 
@@ -52,7 +56,7 @@ class Track(object):
         self.events.sort()
         self.beats_per_measure = beats_per_measure
         self.resolution = resolution
-        self.ticks_per_measure = self.resolution * beats_per_measure
+        self.ticks_per_measure = self.resolution * self.beats_per_measure
         self.last_measure = self.measure_of(max([event.tick for event in self.events]))
 
     def play(self):
@@ -77,7 +81,7 @@ class Track(object):
 
 class Sequencer(object):
 
-    def __init__(self, tracks, midi_writer, beats_per_measure, resolution, tempo=DEFAULT_TEMPO):
+    def __init__(self, tracks, midi_writer, beats_per_measure, resolution, tempo):
         self.midi_writer = midi_writer
         self.tracks = tracks
         self.beats_per_measure = beats_per_measure
@@ -93,7 +97,7 @@ class Sequencer(object):
             self.tick_offsets.append(0)
 
     def write_event(self, event):
-        print "write_event(", event, ")"
+        #print "write_event(", event, ")"
         buf = self.midi_writer.event_write(event, False, False, True)
         if buf is not None and buf < 1000:
             # TODO: Do something smart
@@ -107,7 +111,7 @@ class Sequencer(object):
         events = []
         for idx, track in enumerate(self.tracks):
             if not track.now_playing:
-                next
+               continue 
             tick_offset = self.tick_offsets[idx]
             for event in track.events:
                 event = eval(repr(event))
@@ -122,7 +126,6 @@ class Sequencer(object):
         return self.last_write is None or now - self.last_write >= self.measure_s
 
     def think(self):
-        print self.tick_offsets
         if not self.need_push:
             return
         for event in self.next_measure():
