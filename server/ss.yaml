@@ -3,8 +3,8 @@ midi:
     path: midi/test.mid
 
 patterns:
-    - [0, 1]
-    - [2]
+    - [0, 1, 2]
+#    - [2]
 
 frames:
     - address: 0
@@ -17,6 +17,8 @@ frames:
       main_tracks: [3]
 
     - address: 3
+    - address: 4
+#    - address: 5
 #
 #    - address: 4
 #
