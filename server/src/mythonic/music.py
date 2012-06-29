@@ -1,3 +1,4 @@
+import select
 import sys
 import time
 
@@ -13,6 +14,7 @@ def main():
         print "Usage: %s <midi client> <midi port> <file1, ...>" % script_name
         exit(2)
 
+    print "Press # track then enter to toggle track"
     client = int(sys.argv[1])
     port = int(sys.argv[2])
     file_paths = sys.argv[3:]
@@ -22,20 +24,52 @@ def main():
         return
 
     patterns = [midi.read_midifile(path) for path in file_paths]
+
     beats = BEATS_PER_MEASURE
     tempo = TEMPO
     res = patterns[0].resolution
+
     tracks = []
     for pattern in patterns:
         assert(pattern.resolution == res)
         track = Track(pattern, beats, res)
-        tracks.append(track)
-    midi_writer = make_midi_writer(client, port, res)
-    sequencer = Sequencer(tracks, midi_writer, beats, res, tempo)
-    for track in tracks:
         track.play()
+        tracks.append(track)
+
+    midi_writer = make_midi_writer(client, port, res)
+
+    sequencer = Sequencer(tracks, midi_writer, beats, res, tempo)
+
     while True:
+        toggle_track = read_toggle()
+        if toggle_track is not None:
+            track = tracks[toggle_track - 1]
+            if track.now_playing:
+                track.stop()
+            else:
+                track.play()
         sequencer.think()
+
+
+def readch():
+    val = None
+    (i, o, e) = select.select([sys.stdin], [], [], 0.0001)
+    for s in i:
+        if s == sys.stdin:
+            val = sys.stdin.read(1)
+            break
+    return val
+
+def read_toggle():
+    val = readch()
+    if val is None or not val.isdigit():
+        return None
+
+    while True:
+        nxt = readch()
+        if nxt is None or not nxt.isdigit():
+            return int(val)
+        val += nxt
 
 def make_midi_writer(client, port, res):
     seq = midi.sequencer.SequencerWrite(sequencer_resolution=res)
@@ -110,13 +144,12 @@ class Sequencer(object):
         """
         events = []
         for idx, track in enumerate(self.tracks):
-            if not track.now_playing:
-               continue 
-            tick_offset = self.tick_offsets[idx]
-            for event in track.events:
-                event = eval(repr(event))
-                event.tick = event.tick + tick_offset
-                events.append(event)
+            if track.now_playing:
+                tick_offset = self.tick_offsets[idx]
+                for event in track.events:
+                    event = eval(repr(event))
+                    event.tick = event.tick + tick_offset
+                    events.append(event)
             self.tick_offsets[idx] += track.ticks_per_measure + 1
         return events
 
