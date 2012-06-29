@@ -19,7 +19,9 @@ from mythonic import DelegationManager
 from biscuit import HardwareChain
 
 import pprint
-pp = pprint.PrettyPrinter(indent=4, depth=7)
+pp = pprint.PrettyPrinter(indent=4, depth=5)
+
+PRINT_STATUS = False
 
 def main():
     if len(sys.argv) not in [3, 5]:
@@ -48,21 +50,21 @@ def make_music_box(client, port, path):
 
 def load_manager(tty_dev, config, midi_client, midi_port):
     tty = serial.Serial(tty_dev, baudrate=1000000, parity=serial.PARITY_EVEN)
-    hc = HardwareChain(tty, len(config["frames"]), .001)
     music_box = make_music_box(midi_client, midi_port, config["midi"]["path"])
 
     picture_frames = []
+    addresses = []
     for pf_config in config["frames"]:
         main_tracks = []
         if "main_tracks" in  pf_config:
             main_tracks = [music_box.tracks[i] for i in pf_config["main_tracks"]]
         bonus_tracks = []
         if "bonus_tracks" in  pf_config:
-            tracks = [music_box.tracks[i] for i in pf_config["bonus_tracks"]]
-        address = int(pf_config["address"])
-        pf = SSPictureFrame(main_tracks, bonus_tracks)
-        picture_frames.append(pf)
+            bonus_tracks = [music_box.tracks[i] for i in pf_config["bonus_tracks"]]
+        picture_frames.append(SSPictureFrame(main_tracks, bonus_tracks))
+        addresses.append(int(pf_config["address"]))
 
+    hc = HardwareChain(tty, len(addresses), .001, addresses)
     # Patterns of picture frames.
     patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
@@ -101,7 +103,7 @@ class SSPictureFrame(PictureFrame):
         """
         Called when screen saver is active
         """
-        print "screenserver: ", offset
+        if PRINT_STATUS: print "screenserver: ", offset
         t = time.time() + offset
         self.blackout()
         self.uv = int(abs((math.sin(t) * self.MAX_UV) / 10))
@@ -112,7 +114,7 @@ class SSPictureFrame(PictureFrame):
 
         Shine only white light at 1/3rd intensity.
         """
-        print "inactive: ", offset
+        if PRINT_STATUS: print "inactive: ", offset
         self.mute()
         self.blackout()
         self.white = self.MAX_WHITE / 3
@@ -123,7 +125,7 @@ class SSPictureFrame(PictureFrame):
 
         Minimize white and do a steady overlaping fade of RGB and UV.
         """
-        print "active: ", offset
+        if PRINT_STATUS: print "active: ", offset
         t = time.time() + offset
         self.unmute_main()
         self.white = self.MIN_WHITE
@@ -136,7 +138,7 @@ class SSPictureFrame(PictureFrame):
 
         Slowly flash UV.
         """
-        print "active_hint: ", offset
+        if PRINT_STATUS: print "active_hint: ", offset
         t = time.time() + offset
         self.uv = self.MAX_UV if math.sin(t * 2) >= 0 else self.MIN_UV
 
@@ -146,7 +148,7 @@ class SSPictureFrame(PictureFrame):
 
         Play bonus tracks and shine red and only red
         """
-        print "bonus: ", offset
+        if PRINT_STATUS: print "bonus: ", offset
         t = time.time() + offset
         self.unmute_bonus()
         self.hsv = (random.random(), random.random(), random.random())
@@ -163,7 +165,7 @@ class SSManager(EffectsManager):
         # TODO: Get rid of this screensaver crap and implement it properly
         self.screensaver = Screensaver(picture_frames, patterns)
         #self.screensaver_timeout = 60 * 3
-        self.screensaver_timeout = 3
+        self.screensaver_timeout = 60 * 3
         super(self.__class__, self).__init__(picture_frames, patterns)
 
     def update(self):
@@ -176,6 +178,7 @@ class SSManager(EffectsManager):
                 for pf in self.active_frames:
                     pf.deactivate()
                     pf.blackout()
+                    pf.mute()
             self.screensaver.step()
         else:
             self.screensaver.deactivate()
@@ -210,9 +213,6 @@ class Screensaver(object):
         return self.patterns[idx]
 
     def activate(self):
-        if not self._active:
-            for pf in self.picture_frames:
-                pf.blackout()
         self._active = True
 
     def deactivate(self):
