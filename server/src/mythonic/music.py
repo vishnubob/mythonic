@@ -4,7 +4,6 @@ import time
 import midi
 import midi.sequencer
 
-
 DEFAULT_BEATS_PER_MEASURE = 4
 
 def main():
@@ -82,7 +81,7 @@ class Sequencer(object):
         self.tracks = tracks
         self.resolution = resolution
         self.beats_per_measure = beats_per_measure
-        self.tps = self.beats_per_measure * self.resolution / 60.0
+        self.tps = self.midi_writer.tempo * self.resolution / 60.0
         self.window_s = (self.beats_per_measure * self.resolution / 2.0) * self.tps
         self.last_write = None
         self.tick_offsets = []
