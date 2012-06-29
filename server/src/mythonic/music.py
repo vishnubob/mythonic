@@ -5,6 +5,7 @@ import midi
 import midi.sequencer
 
 DEFAULT_BEATS_PER_MEASURE = 4
+DEFAULT_TEMPO = 4
 
 def main():
     if len(sys.argv) < 4:
@@ -76,14 +77,17 @@ class Track(object):
 
 class Sequencer(object):
 
-    def __init__(self, tracks, midi_writer, beats_per_measure, resolution):
+    def __init__(self, tracks, midi_writer, beats_per_measure, resolution, tempo=DEFAULT_TEMPO):
         self.midi_writer = midi_writer
         self.tracks = tracks
-        self.resolution = resolution
         self.beats_per_measure = beats_per_measure
-        self.tps = self.midi_writer.tempo * self.resolution / 60.0
-        self.window_s = (self.beats_per_measure * self.resolution / 2.0) * self.tps
+        self.resolution = resolution
+        self.tempo = tempo
+
+        self.measure_s = self.beats_per_measure/(self.tempo/60.0)
+
         self.last_write = None
+
         self.tick_offsets = []
         for track in self.tracks:
             self.tick_offsets.append(0)
@@ -115,9 +119,10 @@ class Sequencer(object):
     @property
     def need_push(self):
         now = time.time()
-        return self.last_write is None or now - self.last_write >= self.window_s
+        return self.last_write is None or now - self.last_write >= self.measure_s
 
     def think(self):
+        print self.tick_offsets
         if not self.need_push:
             return
         for event in self.next_measure():
