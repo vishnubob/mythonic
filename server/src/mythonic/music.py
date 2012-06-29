@@ -8,11 +8,25 @@ import midi.sequencer
 BEATS_PER_MEASURE = 4
 TEMPO = 120
 
+def make_looper(midi_files, client, port, beats=BEATS_PER_MEASURE, tempo=TEMPO):
+    patterns = [midi.read_midifile(path) for path in midi_files]
+
+    res = patterns[0].resolution
+
+    midi_writer = make_midi_writer(client, port, res)
+
+    tracks = []
+    for pattern in patterns:
+        assert(pattern.resolution == res)
+        track = Track(pattern, beats, res)
+        tracks.append(track)
+    return Looper(tracks, midi_writer, beats, res, tempo)
+
 def main():
     if len(sys.argv) < 4:
         script_name = sys.argv[0]
         print "Usage: %s <midi client> <midi port> <file1, ...>" % script_name
-        exit(2)
+        sys.exit(1)
 
     print "Press # track then enter to toggle track"
     client = int(sys.argv[1])
@@ -21,35 +35,19 @@ def main():
 
     if len(file_paths) <= 0:
         print "No MIDI files specified"
-        return
+        sys.exit(1)
 
-    patterns = [midi.read_midifile(path) for path in file_paths]
-
-    beats = BEATS_PER_MEASURE
-    tempo = TEMPO
-    res = patterns[0].resolution
-
-    tracks = []
-    for pattern in patterns:
-        assert(pattern.resolution == res)
-        track = Track(pattern, beats, res)
-        track.play()
-        tracks.append(track)
-
-    midi_writer = make_midi_writer(client, port, res)
-
-    sequencer = Sequencer(tracks, midi_writer, beats, res, tempo)
+    looper = make_looper(file_paths, client, port)
 
     while True:
         toggle_track = read_toggle()
         if toggle_track is not None:
-            track = tracks[toggle_track - 1]
+            track = looper.tracks[toggle_track - 1]
             if track.now_playing:
                 track.stop()
             else:
                 track.play()
-        sequencer.think()
-
+        looper.think()
 
 def readch():
     val = None
@@ -91,7 +89,6 @@ class Track(object):
         self.beats_per_measure = beats_per_measure
         self.resolution = resolution
         self.ticks_per_measure = self.resolution * self.beats_per_measure
-        self.last_measure = self.measure_of(max([event.tick for event in self.events]))
 
     def play(self):
         self._now_playing = True
@@ -113,7 +110,7 @@ class Track(object):
         self.current_measure = (self.current_measure + 1) % self.current_measure
         return events
 
-class Sequencer(object):
+class Looper(object):
 
     def __init__(self, tracks, midi_writer, beats_per_measure, resolution, tempo):
         self.midi_writer = midi_writer
