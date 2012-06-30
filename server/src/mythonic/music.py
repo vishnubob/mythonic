@@ -129,6 +129,7 @@ class Looper(object):
 
     def play(self, idx):
         track = self.tracks[idx]
+        self.offsets[idx] += self.tick_cursors[idx]
         self.tick_cursors[idx] = 0
         self.now_playing.add(track)
 
