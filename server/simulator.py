@@ -1,3 +1,4 @@
+import colorsys
 import sys
 
 import biscuit
@@ -17,7 +18,11 @@ class SimulatedHC(object):
     def set_light(self, addr, idx, x):
         ch = self.ch
         ch[idx] = x
-        pygame.draw.rect(screen, (ch[0], ch[2], ch[3]), (50, 50, 100, 100))
+        pygame.draw.rect(screen, (ch[0], ch[2], ch[3]), (0, 0, 100, 100))
+        pygame.draw.rect(screen, (ch[4], ch[4], ch[4]), (100, 0, 100, 100))
+        purple_hsv = colorsys.rgb_to_hsv(170, 0, 250)
+        uv_rgb = colorsys.hsv_to_rgb(purple_hsv[0], purple_hsv[1], ch[5])
+        pygame.draw.rect(screen, uv_rgb, (200, 0, 100, 100))
         pygame.display.update()
 
     def get_touch_triggers(self):
