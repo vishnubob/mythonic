@@ -1,0 +1,12 @@
+Kick C2
+Snare 8 D2
+Snare 9 E2
+Low Tom F2
+Mid Tom G2
+High Tom A2
+Closed Hi Hat F#2
+Open Hi Hat A#2
+Cymbal C#3
+Rimshot C#2
+Clap D#2
+Cowbell D#3
