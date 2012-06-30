@@ -14,7 +14,7 @@ import midi
 
 from mythonic.manager import Coordinator
 from mythonic.manager import EffectsManager
-from mythonic.pictureframe import PictureFrame
+from mythonic.pictureframe import MusicalPictureFrame
 from mythonic.music import make_looper
 from biscuit import HardwareChain
 
@@ -41,63 +41,50 @@ def main():
 
     manager.run()
 
-def make_music_box(client, port, path):
-    pattern = midi.read_midifile(path)
-    seq = midi.sequencer.SequencerWrite(sequencer_resolution=pattern.resolution)
-    seq.subscribe_port(client, port)
-    seq.start_sequencer()
-    return MusicBox(pattern, seq)
-
 def load_manager(tty_dev, config, midi_client, midi_port):
     tty = serial.Serial(tty_dev, baudrate=1000000, parity=serial.PARITY_EVEN)
-    music_box = make_music_box(midi_client, midi_port, config["midi"]["path"])
+    looper = make_looper(config["midi"]["paths"], midi_client, midi_port)
 
     picture_frames = []
     addresses = []
     for pf_config in config["frames"]:
         main_tracks = []
         if "main_tracks" in  pf_config:
-            main_tracks = [music_box.tracks[i] for i in pf_config["main_tracks"]]
+            main_tracks = map(int, pf_config["main_tracks"])
+
         bonus_tracks = []
         if "bonus_tracks" in  pf_config:
-            bonus_tracks = [music_box.tracks[i] for i in pf_config["bonus_tracks"]]
-        picture_frames.append(SSPictureFrame(main_tracks, bonus_tracks))
+            bonus_tracks = map(int, pf_config["bonus_tracks"])
+
+        picture_frames.append(SSPictureFrame(looper, main_tracks, bonus_tracks))
         addresses.append(int(pf_config["address"]))
 
     hc = HardwareChain(tty, len(addresses), .001, addresses)
+
     # Patterns of picture frames.
     patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
-    return Coordinator(hc, SSManager(picture_frames, patterns, music_box))
+    return Coordinator(hc, SSManager(picture_frames, patterns, looper))
 
-class SSPictureFrame(PictureFrame):
+class SSPictureFrame(MusicalPictureFrame):
 
-    # TODO: Move all Track handling to SSManager
-
-    def __init__(self, main_tracks=[], bonus_tracks=[]):
+    def __init__(self, looper, main_tracks=[], bonus_tracks=[]):
+        self.looper = looper
         self.main_tracks = main_tracks
         self.bonus_tracks = bonus_tracks
-        super(self.__class__, self).__init__()
+        super(self.__class__, self).__init__(looper, main_tracks + bonus_tracks)
 
-    def mute(self):
-        self.mute_main()
-        self.mute_bonus()
+    def stop_main_tracks(self):
+        self.stop_tracks(self.main_tracks)
 
-    def mute_main(self):
-        for track in self.main_tracks:
-            track.mute()
+    def play_main_tracks(self):
+        self.play_tracks(self.main_tracks)
 
-    def unmute_main(self):
-        for track in self.main_tracks:
-           track.unmute()
+    def stop_bonus_tracks(self):
+        self.stop_tracks(self.bonus_tracks)
 
-    def mute_bonus(self):
-        for track in self.bonus_tracks:
-            track.mute()
-
-    def unmute_bonus(self):
-        for track in self.bonus_tracks:
-            track.unmute()
+    def play_bonus_tracks(self):
+        self.play_tracks(self.bonus_tracks)
 
     def step_screensaver(self, offset):
         """
@@ -115,7 +102,7 @@ class SSPictureFrame(PictureFrame):
         Shine only white light at 1/3rd intensity.
         """
         if PRINT_STATUS: print "inactive: ", offset
-        self.mute()
+        self.stop_tracks()
         self.blackout()
         self.white = self.MAX_WHITE / 3
 
@@ -127,7 +114,7 @@ class SSPictureFrame(PictureFrame):
         """
         if PRINT_STATUS: print "active: ", offset
         t = time.time() + offset
-        self.unmute_main()
+        self.play_main_tracks()
         self.white = self.MIN_WHITE
         self.hsv = (abs(math.sin(t * 0.5)), 1, 0.5)
         self.uv = int(abs(math.sin(t * 0.25) * self.MAX_UV))
@@ -150,7 +137,7 @@ class SSPictureFrame(PictureFrame):
         """
         if PRINT_STATUS: print "bonus: ", offset
         t = time.time() + offset
-        self.unmute_bonus()
+        self.play_tracks()
         self.hsv = (random.random(), random.random(), random.random())
         self.uv = abs(int(random.random() * self.MAX_UV))
         self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
@@ -160,8 +147,8 @@ class SSManager(EffectsManager):
     Runner for Sonic Storyboard.
     """
 
-    def __init__(self, picture_frames, patterns, music_box=None):
-        self.music_box = music_box
+    def __init__(self, picture_frames, patterns, looper=None):
+        self.looper = looper
         # TODO: Get rid of this screensaver crap and implement it properly
         self.screensaver = Screensaver(picture_frames, patterns)
         #self.screensaver_timeout = 60 * 3
@@ -179,7 +166,7 @@ class SSManager(EffectsManager):
                     pf.deactivate()
                     pf.blackout()
                     pf.mute()
-            self.screensaver.step()
+            self.screensaver.think()
         else:
             self.screensaver.deactivate()
             for idx, pf in enumerate(self.picture_frames):
@@ -192,8 +179,8 @@ class SSManager(EffectsManager):
                             pf.step_active_hint(idx)
                 else:
                     pf.step_inactive(idx)
-        if self.music_box is not None:
-            self.music_box.step()
+        if self.looper is not None:
+            self.looper.think()
 
 # XXX: This is an abomination. Kill on sight. Meld into SSManager
 class Screensaver(object):
@@ -220,7 +207,7 @@ class Screensaver(object):
 
     active = property(lambda self: self._active)
 
-    def step(self):
+    def think(self):
         if not self.active or self.current_pattern is None:
             return
         for idx, pf in enumerate(self.current_pattern):

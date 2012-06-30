@@ -82,4 +82,23 @@ class PictureFrame(object):
         self.uv = self.MIN_UV
         self.white = self.MIN_WHITE
 
+class MusicalPictureFrame(PictureFrame):
+    def __init__(self, looper, tracks):
+        self.tracks = tracks 
+        super(MusicalPictureFrame, self).__init__()
+
+    def stop_tracks(self, only_these=None):
+        if only_these is None:
+            only_these = self.tracks
+        for track in only_these:
+            if self.looper.tracks[track] in self.looper.now_playing:
+                self.looper.stop(track)
+
+    def play_tracks(self, only_these=None):
+        if only_these is None:
+            only_these = self.tracks
+        for track in only_these:
+            if self.looper.tracks[track] in self.looper.now_playing:
+                continue
+            self.looper.play(track)
 
