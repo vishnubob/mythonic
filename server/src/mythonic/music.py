@@ -6,94 +6,25 @@ import time
 import midi
 import midi.sequencer
 
-
 BEATS_PER_MEASURE = 4
 TEMPO = 120
-
-TEST_PATTERN = midi.Pattern(format=1, resolution=15360, tracks=\
-    [midi.Track([midi.NoteOnEvent(tick=0, channel=0, data=[72, 100]),
-      midi.NoteOffEvent(tick=15360, channel=0, data=[72, 0]),
-      midi.NoteOnEvent(tick=46080, channel=0, data=[72, 100]),
-      midi.NoteOffEvent(tick=15360, channel=0, data=[72, 0]),
-      midi.NoteOnEvent(tick=46080, channel=0, data=[72, 100]),
-      midi.NoteOffEvent(tick=15360, channel=0, data=[72, 0]),
-      midi.NoteOnEvent(tick=46080, channel=0, data=[72, 100]),
-      midi.NoteOffEvent(tick=15360, channel=0, data=[72, 0]),
-      midi.NoteOnEvent(tick=30720, channel=0, data=[65, 100]),
-      midi.NoteOffEvent(tick=15360, channel=0, data=[65, 0]),
-      midi.EndOfTrackEvent(tick=0, data=[])])])
-
-PP = pprint.PrettyPrinter(indent=4, depth=4)
-
-def main():
-    if len(sys.argv) < 4:
-        script_name = sys.argv[0]
-        print "Usage: %s <midi client> <midi port> <file1, ...>" % script_name
-        sys.exit(1)
-
-    print "Press # track then enter to toggle track"
-    client = int(sys.argv[1])
-    port = int(sys.argv[2])
-    file_paths = sys.argv[3:]
-
-    if len(file_paths) <= 0:
-        print "No MIDI files specified"
-        sys.exit(1)
-
-    looper = make_looper(file_paths, client, port)
-
-    while True:
-        track_addr = read_toggle()
-        if track_addr is not None:
-            track_idx = track_addr - 1
-            if track_idx >= len(looper.tracks):
-                print "Track %d does not exist!" % track_addr
-                continue
-            if looper.tracks[track_idx] in looper.now_playing:
-                looper.stop(track_idx)
-            else:
-                looper.play(track_idx)
-        looper.think()
 
 def make_looper(midi_files, client, port, beats=BEATS_PER_MEASURE, tempo=TEMPO):
     patterns = [midi.read_midifile(path) for path in midi_files]
 
     res = patterns[0].resolution
 
-    midi_writer = make_midi_writer(client, port, res)
+    seq = midi.sequencer.SequencerWrite(sequencer_resolution=res)
+    seq.subscribe_port(client, port)
 
     tracks = []
     for pattern in patterns:
         assert(pattern.resolution == res)
-        tracks.append(Track(pattern))
-    return Looper(tracks, midi_writer, beats, res, tempo)
+        tracks.append(LoopedTrack(pattern))
 
-def readch():
-    val = None
-    (i, o, e) = select.select([sys.stdin], [], [], 0.0001)
-    for s in i:
-        if s == sys.stdin:
-            val = sys.stdin.read(1)
-            break
-    return val
+    return Looper(tracks, seq, beats, res, tempo)
 
-def read_toggle():
-    val = readch()
-    if val is None or not val.isdigit():
-        return None
-
-    while True:
-        nxt = readch()
-        if nxt is None or not nxt.isdigit():
-            return int(val)
-        val += nxt
-
-def make_midi_writer(client, port, res):
-    seq = midi.sequencer.SequencerWrite(sequencer_resolution=res)
-    seq.subscribe_port(client, port)
-    return seq
-
-class Track(object):
+class LoopedTrack(object):
     def __init__(self, mf):
         # Merge events from all tracks in the midi file
         mf.make_ticks_abs()
@@ -146,7 +77,6 @@ class Looper(object):
         if not self.need_push:
             return
         now = time.time()
-        print "Need push!", now, (now - self.last_write if self.last_write is not None else "Lolz")
         if self.last_write is None:
             # Reset sequencer to reset tick count
             self.midi_writer.stop_sequencer()
@@ -180,7 +110,6 @@ class Looper(object):
             # TODO min(track.max_tick, ticks_transpired - 1) 
             qualifies = lambda e: e.tick >= lower and e.tick <= upper
             offset_events = []
-            print filter(qualifies, track.events)
             for event in filter(qualifies, track.events):
                 # Clone the event and increment its ticks
                 event = eval(repr(event))
@@ -200,5 +129,3 @@ class Looper(object):
         if self.tick_cursors[idx] >= track.max_tick:
             self.tick_cursors[idx] = 0
             self.offsets[idx] += track.max_tick + 1
-if __name__ == "__main__":
-    main()
