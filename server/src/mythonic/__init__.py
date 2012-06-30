@@ -1,1 +1,1 @@
-from music import *
+__all__ = ["manager", "music", "pictureframe"]

@@ -12,10 +12,10 @@ import yaml
 import midi.sequencer
 import midi
 
-from mythonic import EffectsManager
-from mythonic import PictureFrame
-from mythonic import MusicBox
-from mythonic import DelegationManager
+from mythonic.manager import Coordinator
+from mythonic.manager import EffectsManager
+from mythonic.pictureframe import PictureFrame
+from mythonic.music import make_looper
 from biscuit import HardwareChain
 
 import pprint
@@ -68,7 +68,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     # Patterns of picture frames.
     patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
-    return DelegationManager(hc, SSManager(picture_frames, patterns, music_box))
+    return Coordinator(hc, SSManager(picture_frames, patterns, music_box))
 
 class SSPictureFrame(PictureFrame):
 

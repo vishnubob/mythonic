@@ -3,7 +3,7 @@ import sys
 import biscuit
 import pygame
 
-import mythonic
+from mythonic.manager import Coordinator
 import ss
 
 screen = pygame.display.set_mode((640, 480)) #make screen
@@ -30,7 +30,7 @@ patterns = []
 patterns = [[picture_frames[0]]]
 effects_manager = ss.SSManager(picture_frames, patterns, None)
 hc = SimulatedHC()
-manager = mythonic.DelegationManager(hc, effects_manager)
+manager = Coordinator(hc, effects_manager)
 
 while True:
     manager.think()
