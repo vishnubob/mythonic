@@ -8,20 +8,6 @@ import midi.sequencer
 BEATS_PER_MEASURE = 4
 TEMPO = 120
 
-def make_looper(midi_files, client, port, beats=BEATS_PER_MEASURE, tempo=TEMPO):
-    patterns = [midi.read_midifile(path) for path in midi_files]
-
-    res = patterns[0].resolution
-
-    midi_writer = make_midi_writer(client, port, res)
-
-    tracks = []
-    for pattern in patterns:
-        assert(pattern.resolution == res)
-        track = Track(pattern, beats, res)
-        tracks.append(track)
-    return Looper(tracks, midi_writer, beats, res, tempo)
-
 def main():
     if len(sys.argv) < 4:
         script_name = sys.argv[0]
@@ -40,14 +26,31 @@ def main():
     looper = make_looper(file_paths, client, port)
 
     while True:
-        toggle_track = read_toggle()
-        if toggle_track is not None:
-            track = looper.tracks[toggle_track - 1]
-            if track.now_playing:
-                track.stop()
+        track_addr = read_toggle()
+        if track_addr is not None:
+            track_idx = track_addr - 1
+            if track_idx >= len(looper.tracks):
+                print "Track %d does not exist!" % track_addr
+                continue
+            if looper.tracks[track_idx] in looper.now_playing:
+                looper.stop(track_idx)
             else:
-                track.play()
+                looper.play(track_idx)
         looper.think()
+
+def make_looper(midi_files, client, port, beats=BEATS_PER_MEASURE, tempo=TEMPO):
+    patterns = [midi.read_midifile(path) for path in midi_files]
+
+    res = patterns[0].resolution
+
+    midi_writer = make_midi_writer(client, port, res)
+    setattr(midi_writer, 'started_at',  time.time())
+
+    tracks = []
+    for pattern in patterns:
+        assert(pattern.resolution == res)
+        tracks.append(Track(pattern))
+    return Looper(tracks, midi_writer, beats, res, tempo)
 
 def readch():
     val = None
@@ -72,45 +75,21 @@ def read_toggle():
 def make_midi_writer(client, port, res):
     seq = midi.sequencer.SequencerWrite(sequencer_resolution=res)
     seq.subscribe_port(client, port)
-    seq.start_sequencer()
     return seq
 
 class Track(object):
-    _now_playing = False
-    current_measure = 0
-
-    def __init__(self, mf, beats_per_measure, resolution):
+    def __init__(self, mf):
         # Merge events from all tracks in the midi file
         mf.make_ticks_abs()
         self.events = []
         for track in mf:
             self.events += track
         self.events.sort()
-        self.beats_per_measure = beats_per_measure
-        self.resolution = resolution
-        self.ticks_per_measure = self.resolution * self.beats_per_measure
-
-    def play(self):
-        self._now_playing = True
-        self.current_measure = 0
-
-    def stop(self):
-        self._now_playing = False
-
-    now_playing = property(lambda s: s._now_playing)
-
-    def measure_of(self, tick):
-        return tick / self.ticks_per_measure
-
-    def next_measure(self):
-        events = []
-        for event in self.events:
-            if self.measure_of(e.tick) == self.current_measure:
-                events.append(event)
-        self.current_measure = (self.current_measure + 1) % self.current_measure
-        return events
+        self.max_tick = max([event.tick for event in self.events])
 
 class Looper(object):
+    now_playing = set()
+    last_write = None
 
     def __init__(self, tracks, midi_writer, beats_per_measure, resolution, tempo):
         self.midi_writer = midi_writer
@@ -119,13 +98,41 @@ class Looper(object):
         self.resolution = resolution
         self.tempo = tempo
 
+        self.tick_cursors = [0 for track in tracks]
+
+        self.ticks_per_measure = self.beats_per_measure * self.resolution
         self.measure_s = self.beats_per_measure/(self.tempo/60.0)
+        print self.measure_s
 
-        self.last_write = None
+        self.offsets = [self.ticks_per_measure * 0 for track in tracks]
 
-        self.tick_offsets = []
-        for track in self.tracks:
-            self.tick_offsets.append(0)
+    def play(self, idx):
+        track = self.tracks[idx]
+        self.tick_cursors[idx] = 0
+        self.now_playing.add(track)
+
+    def stop(self, idx):
+        track = self.tracks[idx]
+        self.now_playing.remove(track)
+
+    @property
+    def need_push(self):
+        now = time.time()
+        return self.last_write is None or now - self.last_write >= self.measure_s
+
+    def think(self):
+        if not self.need_push:
+            return
+        now = time.time()
+        print "Need push!", now, (now - self.last_write if self.last_write is not None else "Lolz")
+        if self.last_write is None:
+            # Reset sequencer to reset tick count
+            self.midi_writer.stop_sequencer()
+        for event in self.next_measure():
+            self.write_event(event)
+        if self.last_write is None:
+            self.midi_writer.start_sequencer()
+        self.last_write = time.time()
 
     def write_event(self, event):
         #print "write_event(", event, ")"
@@ -139,28 +146,28 @@ class Looper(object):
         Retrieve the next measure worth of events.
         Only events part of "now_playing" tracks are included.
         """
-        events = []
+        upcoming_events = []
         for idx, track in enumerate(self.tracks):
-            if track.now_playing:
-                tick_offset = self.tick_offsets[idx]
-                for event in track.events:
-                    event = eval(repr(event))
-                    event.tick = event.tick + tick_offset
-                    events.append(event)
-            self.tick_offsets[idx] += track.ticks_per_measure + 1
-        return events
+            if track not in self.now_playing:
+                pass #continue
+            lower = self.tick_cursors[idx]
+            # Off by one error somewhere here?
+            upper = min(track.max_tick, lower + self.ticks_per_measure - 1)
+            qualifies = lambda e: e.tick >= lower and e.tick <= upper
+            for event in filter(qualifies, track.events):
+                # Clone the event and increment its ticks
+                event = eval(repr(event))
+                event.tick = event.tick + self.offsets[idx]
+                upcoming_events.append(event)
+        print "Offsets:", self.offsets, "cursors:", self.tick_cursors
+        self._increment_measures()
+        return upcoming_events
 
-    @property
-    def need_push(self):
-        now = time.time()
-        return self.last_write is None or now - self.last_write >= self.measure_s
-
-    def think(self):
-        if not self.need_push:
-            return
-        for event in self.next_measure():
-            self.write_event(event)
-        self.last_write = time.time()
+    def _increment_measures(self):
+        for idx, track in enumerate(self.tracks):
+            if self.tick_cursors[idx] >= track.max_tick:
+                self.tick_cursors[idx] = 0
+                self.offsets[idx] += track.max_tick + 1
 
 if __name__ == "__main__":
     main()
