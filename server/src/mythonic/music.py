@@ -56,14 +56,14 @@ class LoopedTrack(midi.Track):
     def next_measure(self):
         start_tick = self.current_measure_in_ticks
         end_tick = self.next_measure_in_ticks
-        self.inc_current_measure()
-        qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick < end_tick
+        qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick <= end_tick
         ret = []
         for event in filter(qualifies, self):
             new_tick = event.tick + self.get_tick_offset()
             new_event = event.copy(tick=new_tick)
             ret.append(new_event)
         print ret
+        self.inc_current_measure()
         return ret
 
     def get_tick_offset(self):
@@ -91,6 +91,7 @@ class Looper(object):
         self.last_push = None
         self.ticks_per_measure = self.beats_per_measure * self.resolution
         self.sequencer_playing = False
+        self.start_sequencer()
 
     def start_sequencer(self):
         self.sequencer.start_sequencer()
@@ -125,7 +126,8 @@ class Looper(object):
         """
         if not self.playing:
             if self.sequencer_playing:
-                self.stop_sequencer()
+                #self.stop_sequencer()
+                self.last_push = None
             return
         if self.last_push is None:
             ret = True
