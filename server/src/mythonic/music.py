@@ -57,14 +57,17 @@ class LoopedTrack(midi.Track):
         start_tick = self.current_measure_in_ticks
         end_tick = self.next_measure_in_ticks
         self.inc_current_measure()
-        qualifies = lambda e: e.tick >= start_tick and e.tick < end_tick
-        events = filter(qualifies, self)
-        for event in events:
-            event.tick += self.get_tick_offset()
-        return events
+        qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick < end_tick
+        ret = []
+        for event in filter(qualifies, self):
+            new_tick = event.tick + self.get_tick_offset()
+            new_event = event.copy(tick=new_tick)
+            ret.append(new_event)
+        print ret
+        return ret
 
     def get_tick_offset(self):
-        return self.start_offset_in_ticks + (self.loop_count * (self.max_measure * self.resolution * self.beats_per_measure))
+        return int(self.start_offset_in_ticks + (self.loop_count * (self.max_measure * self.resolution * self.beats_per_measure)))
 
     @property
     def next_measure_in_ticks(self):
@@ -135,6 +138,7 @@ class Looper(object):
             return
         print "write_event(", event, ")"
         buf = self.sequencer.event_write(event, tick=True)
+        #buf = self.sequencer.event_write(event, False, False, True)
         if buf is not None and buf < 1000:
             # TODO: Do something smart
             print "WARNING! event_write buf < 1000"
