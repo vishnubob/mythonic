@@ -39,14 +39,20 @@ class LoopedTrack(midi.Track):
         self.make_ticks_abs()
         self.max_tick = max([event.tick for event in self])
         self.max_measure = math.ceil(self.max_tick / (self.resolution * self.beats_per_measure))
+        self.open_events = {}
 
     def start(self, start_measure):
         self.start_offset_in_ticks = (self.resolution * self.beats_per_measure) * start_measure
         self.loop_count = 0
         self.enabled = True
 
-    def stop(self):
+    def stop(self, sequencer):
         self.enabled = False
+        for pitch in self.open_events:
+            new_event = self.open_events[pitch].copy()
+            new_event.velocity = 0
+            new_event.tick = 0
+            sequencer.event_write(new_event, direct=True)
 
     def inc_current_measure(self):
         self.current_measure = (self.current_measure + 1) % self.max_measure
@@ -59,6 +65,12 @@ class LoopedTrack(midi.Track):
         qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick <= end_tick
         ret = []
         for event in filter(qualifies, self):
+            if isinstance(event, midi.NoteOnEvent):
+                if event.pitch not in self.open_events:
+                    self.open_events[event.pitch] = event
+            if isinstance(event, midi.NoteOffEvent):
+                if event.pitch in self.open_events:
+                    del self.open_events[event.pitch]
             new_tick = event.tick + self.get_tick_offset()
             new_event = event.copy(tick=new_tick)
             ret.append(new_event)
@@ -109,7 +121,7 @@ class Looper(object):
     def stop(self, idx):
         print "STOP!", idx
         track = self.tracks[idx]
-        track.stop()
+        track.stop(self.sequencer)
 
     @property
     def playing(self):
