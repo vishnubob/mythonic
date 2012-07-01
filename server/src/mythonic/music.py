@@ -52,7 +52,7 @@ class LoopedTrack(midi.Track):
             new_event = self.open_events[pitch].copy()
             new_event.velocity = 0
             # XXX: quantized on the beat
-            new_event.tick += self.resolution
+            new_event.tick += (self.get_tick_offset() + self.resolution)
             sequencer.event_write(new_event, tick=True)
 
     def inc_current_measure(self):
