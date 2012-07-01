@@ -145,4 +145,4 @@ class Looper(object):
 
     @property
     def next_logical_measure(self):
-        return (self.sequencer.queue_get_tick_time() / self.ticks_per_measure) + 1
+        return (self.sequencer.queue_get_tick_time() / self.ticks_per_measure) + 2
