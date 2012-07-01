@@ -6,7 +6,7 @@ import time
 import midi
 import midi.sequencer
 
-from mythonic.music import make_looper
+from music import make_looper
 
 def main():
     if len(sys.argv) < 4:

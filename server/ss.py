@@ -12,10 +12,10 @@ import yaml
 import midi.sequencer
 import midi
 
-from mythonic.manager import Coordinator
-from mythonic.manager import EffectsManager
-from mythonic.pictureframe import MusicalPictureFrame
-from mythonic.music import make_looper
+from manager import Coordinator
+from manager import EffectsManager
+from pictureframe import MusicalPictureFrame
+from music import make_looper
 from biscuit import HardwareChain
 
 import pprint

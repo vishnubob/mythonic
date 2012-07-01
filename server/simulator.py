@@ -4,8 +4,8 @@ import sys
 import biscuit
 import pygame
 
-from mythonic.manager import Coordinator
-from mythonic.music import make_looper
+from manager import Coordinator
+from music import make_looper
 import ss
 
 TEST_TRACK = "../music_raw/dewb_4bar/8 bar dance.mid"
