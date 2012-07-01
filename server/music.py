@@ -64,7 +64,10 @@ class LoopedTrack(midi.Track):
     def next_measure(self):
         start_tick = self.current_measure_in_ticks
         end_tick = self.next_measure_in_ticks
-        qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick <= end_tick
+        if (self.current_measure + 1) == self.max_measure:
+            qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick <= end_tick
+        else:
+            qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick < end_tick
         ret = []
         for event in filter(qualifies, self):
             if isinstance(event, midi.NoteOnEvent):
@@ -74,7 +77,6 @@ class LoopedTrack(midi.Track):
             new_tick = event.tick + self.get_tick_offset()
             new_event = event.copy(tick=new_tick)
             ret.append(new_event)
-        print ret
         self.inc_current_measure()
         return ret
 
@@ -161,7 +163,7 @@ class Looper(object):
                 continue
             for event in track.next_measure():
                 self.write_event(event)
-        self.sequencer.drain()
+        #self.sequencer.drain()
 
     def write_event(self, event):
         if not isinstance(event, midi.NoteEvent):
