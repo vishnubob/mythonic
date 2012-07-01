@@ -49,7 +49,7 @@ class Looper(object):
         self.ticks_per_measure = self.beats_per_measure * self.resolution
         self.measure_s = self.beats_per_measure/(self.tempo/60.0)
 
-        # To buffer, we don't start play
+        # We hang back a measure
         self.offsets = [self.ticks_per_measure for track in tracks]
         self.tick_cursors = [0 for track in tracks]
 
@@ -61,20 +61,25 @@ class Looper(object):
         self.sequencer_started_at = time.time()
 
     def play(self, idx):
+        print "PLAY!"
         track = self.tracks[idx]
         self.offsets[idx] += self.tick_cursors[idx]
         self.tick_cursors[idx] = 0
         self.now_playing.add(track)
 
     def stop(self, idx):
+        print "STOP!"
         track = self.tracks[idx]
         self.now_playing.remove(track)
 
     @property
     def need_push(self):
+        """
+        True once halfway through the first measure.
+        Every measure length after that point.
+        """
         now = time.time()
         if self.last_push is None:
-            # We want to keep ahead by half a measure
             return now - self.sequencer_started_at >= self.measure_s/2.0
         return self.last_push is None or now - self.last_push >= self.measure_s
 
