@@ -110,7 +110,7 @@ class Looper(object):
         print "Global measure", self.global_measure
         upcoming_events = []
         for idx, track in enumerate(self.tracks):
-            if track in self.now_playing:
+            if track not in self.now_playing:
                 continue
             print "Local measure", self.current_measure[idx]
             lower = self.current_measure[idx] * self.beats_per_measure * self.resolution
