@@ -67,11 +67,9 @@ class LoopedTrack(midi.Track):
         ret = []
         for event in filter(qualifies, self):
             if isinstance(event, midi.NoteOnEvent):
-                if event.pitch not in self.open_events:
-                    self.open_events[event.pitch] = event
+                self.open_events[event.pitch] = event
             if isinstance(event, midi.NoteOffEvent):
-                if event.pitch in self.open_events:
-                    del self.open_events[event.pitch]
+                del self.open_events[event.pitch]
             new_tick = event.tick + self.get_tick_offset()
             new_event = event.copy(tick=new_tick)
             ret.append(new_event)
