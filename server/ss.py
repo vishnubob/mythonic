@@ -110,7 +110,7 @@ class SSPictureFrame(MusicalPictureFrame):
         # Slowly cycle through hue
         hue = mmath.sawtooth(t / 10.0, 1)
         self.hsv = (hue, 1, 0.5)
-        self.uv = int(abs((math.sin(t) * self.MAX_UV) / 10))
+        self.uv = int(mmath.sin_abs(t/3, True) * self.MAX_UV)
 
     def step_pattern_hint(self, offset):
         """
