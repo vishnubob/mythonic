@@ -43,7 +43,8 @@ def main():
 
 def load_manager(tty_dev, config, midi_client, midi_port):
     tty = serial.Serial(tty_dev, baudrate=1000000, parity=serial.PARITY_EVEN)
-    looper = make_looper(config["midi"]["paths"], midi_client, midi_port)
+
+    looper = make_looper(config["midi"]["tracks"], midi_client, midi_port) 
 
     picture_frames = []
     addresses = []
@@ -57,12 +58,16 @@ def load_manager(tty_dev, config, midi_client, midi_port):
             bonus_tracks = map(int, pf_config["bonus_tracks"])
 
         picture_frames.append(SSPictureFrame(looper, main_tracks, bonus_tracks))
-        addresses.append(int(pf_config["address"]))
+        addresses.append(int(pf_config["address"]) - 1)
 
     hc = HardwareChain(tty, len(addresses), .001, addresses)
 
     # Patterns of picture frames.
-    patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
+    if "patterns" not in config or config["patterns"] is None:
+        patterns = []
+    else:
+        patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
+
 
     return Coordinator(hc, SSManager(picture_frames, patterns, looper))
 
