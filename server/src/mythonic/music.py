@@ -35,10 +35,6 @@ class LoopedTrack(object):
         self.max_tick = max([event.tick for event in self.events])
 
 class Looper(object):
-    now_playing = set()
-    last_push = None
-    sequencer_started_at = None
-
     def __init__(self, tracks, midi_writer, beats_per_measure, resolution, tempo):
         self.midi_writer = midi_writer
         self.tracks = tracks
@@ -53,7 +49,9 @@ class Looper(object):
         self.offsets = [self.ticks_per_measure for track in tracks]
         self.tick_cursors = [0 for track in tracks]
 
-        self.restart_sequencer()
+        self.now_playing = set()
+        self.last_push = None
+        self.sequencer_started_at = None
 
     def restart_sequencer(self):
         self.midi_writer.stop_sequencer()
@@ -84,8 +82,12 @@ class Looper(object):
         return self.last_push is None or now - self.last_push >= self.measure_s
 
     def think(self):
+        if self.sequencer_started_at is None:
+            self.restart_sequencer()
+            print self.sequencer_started_at
         if not self.need_push:
             return
+        print "Push time!", self.midi_writer.queue_get_tick_time()
         for event in self.next_measure():
             self.write_event(event)
         self.last_push = time.time()
