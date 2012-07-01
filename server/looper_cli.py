@@ -31,7 +31,7 @@ def main():
             if track_idx >= len(looper.tracks):
                 print "Track %d does not exist!" % track_idx
                 continue
-            if looper.tracks[track_idx] in looper.now_playing:
+            if looper.tracks[track_idx].playing:
                 looper.stop(track_idx)
             else:
                 looper.play(track_idx)
