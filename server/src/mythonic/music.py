@@ -44,6 +44,7 @@ class LoopedTrack(midi.Track):
     def start(self, start_measure):
         self.start_offset_in_ticks = (self.resolution * self.beats_per_measure) * start_measure
         self.loop_count = 0
+        self.current_measure = 0
         self.enabled = True
 
     def stop(self, sequencer):
@@ -160,6 +161,7 @@ class Looper(object):
                 continue
             for event in track.next_measure():
                 self.write_event(event)
+        self.sequencer.drain()
 
     def write_event(self, event):
         if not isinstance(event, midi.NoteEvent):
@@ -173,4 +175,5 @@ class Looper(object):
 
     @property
     def next_logical_measure(self):
+        print "NL", math.ceil(self.sequencer.queue_get_tick_time() / float(self.ticks_per_measure))
         return math.ceil(self.sequencer.queue_get_tick_time() / float(self.ticks_per_measure))
