@@ -88,18 +88,17 @@ class Looper(object):
         self.beats_per_measure = beats_per_measure
         self.resolution = resolution
         self.tempo = tempo
-
-        self.ticks_per_measure = self.beats_per_measure * self.resolution
-
         self.last_push = None
-        self.sequencer_restarted = False
-        # XXX: stop / start sequencer as needed
-        self.restart_sequencer()
+        self.ticks_per_measure = self.beats_per_measure * self.resolution
+        self.sequencer_playing = False
 
-    def restart_sequencer(self):
-        self.sequencer.stop_sequencer()
+    def start_sequencer(self):
         self.sequencer.start_sequencer()
-        self.sequencer_restarted = True
+        self.sequencer_playing = True
+
+    def stop_sequencer(self):
+        self.sequencer.stop_sequencer()
+        self.sequencer_playing = False
 
     def play(self, idx):
         print "PLAY!", idx
@@ -112,26 +111,42 @@ class Looper(object):
         track.stop()
 
     @property
+    def playing(self):
+        for track in self.tracks:
+            if track.playing:
+                return True
+        return False
+
+    @property
     def need_push(self):
         """
         True once halfway through the first measure.
         Every measure length after that point.
         """
-        now = self.sequencer.queue_get_tick_time()
+        if not self.playing:
+            if self.sequencer_playing:
+                self.stop_sequencer()
+            return
         if self.last_push is None:
-            return now >= self.ticks_per_measure / 2.0
-        return now - self.last_push >= self.ticks_per_measure
+            ret = True
+        else:
+            now = self.sequencer.queue_get_tick_time()
+            ret = (now - self.last_push) >= self.ticks_per_measure
+        if ret:
+            self.last_push = self.sequencer.queue_get_tick_time()
+        return ret
 
     def think(self):
         if not self.need_push:
             return
         print "Push tick-time!", self.sequencer.queue_get_tick_time()
+        if not self.sequencer_playing:
+            self.start_sequencer()
         for track in self.tracks:
             if not track.playing:
                 continue
             for event in track.next_measure():
                 self.write_event(event)
-        self.last_push = self.sequencer.queue_get_tick_time()
 
     def write_event(self, event):
         if not isinstance(event, midi.NoteEvent):
@@ -145,4 +160,4 @@ class Looper(object):
 
     @property
     def next_logical_measure(self):
-        return (self.sequencer.queue_get_tick_time() / self.ticks_per_measure) + 2
+        return math.ceil(self.sequencer.queue_get_tick_time() / float(self.ticks_per_measure))
