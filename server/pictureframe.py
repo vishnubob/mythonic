@@ -30,16 +30,14 @@ class PictureFrame(object):
     def color_property(color, minimum, maximum):
         """
         Creates a property instance for the given color
-        with bounds checking on assignment.
+        providing bound checking and history recording.
         """
-        attr = "_" + color
-        def getcolor(self):
-            return self.__dict__[attr]
-        def setcolor(self, intensity):
+        color_attr = "_" + color
+        def set_color(self, intensity):
             if intensity > maximum or intensity < minimum:
                 raise ValueError(color + " intensity of " + str(intensity) + " is out of bounds.")
-            self.__dict__[attr] = intensity
-        return property(getcolor, setcolor)
+            setattr(self, color_attr, intensity)
+        return property(lambda self: getattr(self, color_attr), set_color)
 
     red = color_property("red", MIN_RED, MAX_RED)
     green = color_property("green", MIN_GREEN, MAX_GREEN)
@@ -58,8 +56,10 @@ class PictureFrame(object):
 
     def activate(self):
         self._active = True
+
     def deactivate(self):
         self._active = False
+        self.blackout()
     active = property(lambda self: self._active)
 
     @property
@@ -84,21 +84,25 @@ class PictureFrame(object):
 
 class MusicalPictureFrame(PictureFrame):
     def __init__(self, looper, tracks):
-        self.tracks = tracks 
+        self.tracks = tracks
         super(MusicalPictureFrame, self).__init__()
+
+    def deactivate(self):
+        self.stop_tracks()
+        super(MusicalPictureFrame, self).deactivate()
 
     def stop_tracks(self, only_these=None):
         if only_these is None:
             only_these = self.tracks
         for track in only_these:
-            if self.looper.tracks[track] in self.looper.now_playing:
+            if self.looper.tracks[track].playing:
                 self.looper.stop(track)
 
     def play_tracks(self, only_these=None):
         if only_these is None:
             only_these = self.tracks
         for track in only_these:
-            if self.looper.tracks[track] in self.looper.now_playing:
+            if self.looper.tracks[track].playing:
                 continue
             self.looper.play(track)
 

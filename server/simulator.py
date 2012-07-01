@@ -8,7 +8,7 @@ from manager import Coordinator
 from music import make_looper
 import ss
 
-TEST_TRACK = "../music_raw/dewb_4bar/8 bar dance.mid"
+TEST_TRACK = "../music_raw/music_test/reasonable_test_2.mid"
 
 screen = pygame.display.set_mode((640, 480)) #make screen
 
@@ -37,7 +37,7 @@ looper = make_looper([TEST_TRACK], 128, 0)
 picture_frames = [ss.SSPictureFrame(looper, [0])]
 patterns = []
 #patterns = [[picture_frames[0]]]
-effects_manager = ss.SSManager(picture_frames, patterns, None)
+effects_manager = ss.SSManager(picture_frames, patterns)
 hc = SimulatedHC()
 manager = Coordinator(hc, effects_manager)
 

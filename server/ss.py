@@ -16,6 +16,7 @@ from manager import Coordinator
 from manager import EffectsManager
 from pictureframe import MusicalPictureFrame
 from music import make_looper
+import mmath
 from biscuit import HardwareChain
 
 import pprint
@@ -77,7 +78,7 @@ class SSPictureFrame(MusicalPictureFrame):
         self.looper = looper
         self.main_tracks = main_tracks
         self.bonus_tracks = bonus_tracks
-        super(self.__class__, self).__init__(looper, main_tracks + bonus_tracks)
+        super(SSPictureFrame, self).__init__(looper, main_tracks + bonus_tracks)
 
     def stop_main_tracks(self):
         self.stop_tracks(self.main_tracks)
@@ -91,57 +92,48 @@ class SSPictureFrame(MusicalPictureFrame):
     def play_bonus_tracks(self):
         self.play_tracks(self.bonus_tracks)
 
-    def step_screensaver(self, offset):
-        """
-        Called when screen saver is active
-        """
-        if PRINT_STATUS: print "screenserver: ", offset
-        t = time.time() + offset
-        self.blackout()
-        self.uv = int(abs((math.sin(t) * self.MAX_UV) / 10))
-
     def step_inactive(self, offset):
         """
         Effects for when this frame is not active and not screensavering
-
-        Shine only white light at 1/3rd intensity.
         """
         if PRINT_STATUS: print "inactive: ", offset
-        self.stop_tracks()
-        self.blackout()
         self.white = self.MAX_WHITE / 3
 
     def step_active(self, offset):
         """
         Effects for after a picture frame has been activated.
-
-        Minimize white and do a steady overlaping fade of RGB and UV.
         """
         if PRINT_STATUS: print "active: ", offset
         t = time.time() + offset
         self.play_main_tracks()
         self.white = self.MIN_WHITE
-        self.hsv = (abs(math.sin(t * 0.5)), 1, 0.5)
-        self.uv = int(abs(math.sin(t * 0.25) * self.MAX_UV))
+        # Slowly cycle through hue
+        hue = mmath.sawtooth(t / 10.0, 1)
+        self.hsv = (hue, 1, 0.5)
+        self.uv = int(abs((math.sin(t) * self.MAX_UV) / 10))
 
-    def step_active_hint(self, offset):
+    def step_pattern_hint(self, offset):
         """
         Hint that this selectd picture frame is part of a pattern.
-
-        Slowly flash UV.
         """
         if PRINT_STATUS: print "active_hint: ", offset
         t = time.time() + offset
-        self.uv = self.MAX_UV if math.sin(t * 2) >= 0 else self.MIN_UV
+        if int(t % 3) == 2:
+            print "UV ON!"
+            self.uv = self.MAX_UV
+        elif int(t % 3) == 0:
+            print "UV OFF!"
+            self.uv = self.MIN_UV
+
 
     def step_bonus(self, offset):
         """
         Effects for when this frame is part of a completed pattern
-
-        Play bonus tracks and shine red and only red
         """
         if PRINT_STATUS: print "bonus: ", offset
-        t = time.time() + offset
+        self.step_chaos(offset)
+
+    def step_chaos(self):
         self.play_tracks()
         self.hsv = (random.random(), random.random(), random.random())
         self.uv = abs(int(random.random() * self.MAX_UV))
@@ -155,9 +147,9 @@ class SSManager(EffectsManager):
     def __init__(self, picture_frames, patterns, looper=None):
         self.looper = looper
         # TODO: Get rid of this screensaver crap and implement it properly
-        self.screensaver = Screensaver(picture_frames, patterns)
+        self.screensaver = Screensaver(picture_frames, patterns, 5)
         #self.screensaver_timeout = 60 * 3
-        self.screensaver_timeout = 60 * 3
+        self.screensaver_timeout = 10
         super(self.__class__, self).__init__(picture_frames, patterns)
 
     def update(self):
@@ -167,13 +159,10 @@ class SSManager(EffectsManager):
         if self.untouched_for >= self.screensaver_timeout:
             if not self.screensaver.active:
                 self.screensaver.activate()
-                for pf in self.active_frames:
-                    pf.deactivate()
-                    pf.blackout()
-                    pf.mute()
-            self.screensaver.think()
         else:
-            self.screensaver.deactivate()
+            #print self.screensaver_timeout - self.untouched_for
+            if self.screensaver.active:
+                self.screensaver.deactivate()
             for idx, pf in enumerate(self.picture_frames):
                 if pf.active:
                     pf.step_active(idx)
@@ -188,35 +177,45 @@ class SSManager(EffectsManager):
             self.looper.think()
 
 # XXX: This is an abomination. Kill on sight. Meld into SSManager
-class Screensaver(object):
+class Screensaver(EffectsManager):
 
-    def __init__(self, picture_frames, patterns):
-        self.picture_frames = picture_frames
-        self.patterns = list(patterns)
+    def __init__(self, picture_frames, patterns, period_length):
         self._active = False
         self.period_length = 5
+        super(Screensaver, self).__init__(picture_frames[:], patterns[:])
+
+    def activate(self):
+        if self._active:
+            raise "Screensaver is already activate"
+        self._active = True
+        for pf in self.active_frames:
+            pf.deactivate()
+
+    def deactivate(self):
+        if not self._active:
+            raise "Screensaver was already deactivated"
+        self._active = False
+        for pf in self.active_frames:
+            pf.deactivate()
 
     @property
     def current_pattern(self):
         if len(self.patterns) <= 0:
             return None
-
         idx = int(math.fmod((time.time() / self.period_length), len(self.patterns)))
         return self.patterns[idx]
-
-    def activate(self):
-        self._active = True
-
-    def deactivate(self):
-        self._active = False
 
     active = property(lambda self: self._active)
 
     def think(self):
         if not self.active or self.current_pattern is None:
             return
+        print "SCREENSAVER!"
+        pattern = self.current_pattern
+        if pattern is None:
+            pattern = []
         for idx, pf in enumerate(self.current_pattern):
-            pf.step_screensaver(idx)
+            pf.step_pattern_hint(idx)
 
 if __name__ == '__main__':
     main()
