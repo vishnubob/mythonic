@@ -20,7 +20,7 @@ def make_looper(midi_files, client, port, beats=BEATS_PER_MEASURE, tempo=TEMPO):
     tracks = []
     for pattern in patterns:
         assert(pattern.resolution == res)
-        tracks.append(LoopedTrack(pattern, BEATS_PER_MEASURE))
+        tracks.append(LoopedTrack(pattern, beats))
 
     return Looper(tracks, seq, beats, res, tempo)
 
