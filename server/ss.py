@@ -45,7 +45,10 @@ def main():
 def load_manager(tty_dev, config, midi_client, midi_port):
     tty = serial.Serial(tty_dev, baudrate=1000000, parity=serial.PARITY_EVEN)
 
-    looper = make_looper(config["midi"]["tracks"], midi_client, midi_port) 
+    midi_paths = config["midi"]["tracks"]
+    looper = None
+    if midi_paths is not None and len(midi_paths) > 0:
+        looper = make_looper(midi_paths, midi_client, midi_port)
 
     picture_frames = []
     addresses = []
@@ -97,7 +100,7 @@ class SSPictureFrame(MusicalPictureFrame):
         Effects for when this frame is not active and not screensavering
         """
         if PRINT_STATUS: print "inactive: ", offset
-        self.white = self.MAX_WHITE / 3
+        #self.white = self.MAX_WHITE / 3
 
     def step_active(self, offset):
         """
@@ -119,10 +122,8 @@ class SSPictureFrame(MusicalPictureFrame):
         if PRINT_STATUS: print "active_hint: ", offset
         t = time.time() + offset
         if int(t % 3) == 2:
-            print "UV ON!"
             self.uv = self.MAX_UV
         elif int(t % 3) == 0:
-            print "UV OFF!"
             self.uv = self.MIN_UV
 
 
@@ -131,13 +132,13 @@ class SSPictureFrame(MusicalPictureFrame):
         Effects for when this frame is part of a completed pattern
         """
         if PRINT_STATUS: print "bonus: ", offset
-        self.step_chaos(offset)
+        self.step_chaos()
 
     def step_chaos(self):
         self.play_tracks()
         self.hsv = (random.random(), random.random(), random.random())
         self.uv = abs(int(random.random() * self.MAX_UV))
-        self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
+        #self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
 
 class SSManager(EffectsManager):
     """
@@ -148,8 +149,8 @@ class SSManager(EffectsManager):
         self.looper = looper
         # TODO: Get rid of this screensaver crap and implement it properly
         self.screensaver = Screensaver(picture_frames, patterns, 5)
-        #self.screensaver_timeout = 60 * 3
-        self.screensaver_timeout = 10
+        self.screensaver_timeout = 60 * 3
+        #self.screensaver_timeout = 10
         super(self.__class__, self).__init__(picture_frames, patterns)
 
     def update(self):
@@ -170,13 +171,12 @@ class SSManager(EffectsManager):
                         if self.pattern_complete:
                             pf.step_bonus(idx)
                         else:
-                            pf.step_active_hint(idx)
+                            pf.step_pattern_hint(idx)
                 else:
                     pf.step_inactive(idx)
         if self.looper is not None:
             self.looper.think()
 
-# XXX: This is an abomination. Kill on sight. Meld into SSManager
 class Screensaver(EffectsManager):
 
     def __init__(self, picture_frames, patterns, period_length):
@@ -196,7 +196,8 @@ class Screensaver(EffectsManager):
             raise "Screensaver was already deactivated"
         self._active = False
         for pf in self.active_frames:
-            pf.deactivate()
+            if not pf.touched:
+                pf.deactivate()
 
     @property
     def current_pattern(self):
