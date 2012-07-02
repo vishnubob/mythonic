@@ -74,6 +74,7 @@ class EffectsManager(object):
     @property
     def pattern_complete(self):
         return self.active_frames == self.target_pattern
+
     @property
     def target_pattern(self):
         """
