@@ -7,14 +7,14 @@ import midi
 import midi.sequencer
 
 BEATS_PER_MEASURE = 4
-TEMPO = 120
+TEMPO = 105
 
 def make_looper(midi_files, client, port, beats=BEATS_PER_MEASURE, tempo=TEMPO):
     patterns = [midi.read_midifile(path) for path in midi_files]
 
     res = patterns[0].resolution
 
-    seq = midi.sequencer.SequencerWrite(sequencer_resolution=res)
+    seq = midi.sequencer.SequencerWrite(sequencer_resolution=res, sequencer_tempo=TEMPO)
     seq.subscribe_port(client, port)
 
     tracks = []
@@ -53,7 +53,7 @@ class LoopedTrack(midi.Track):
             new_event = self.open_events[pitch].copy()
             new_event.velocity = 0
             # XXX: quantized on the beat
-            new_event.tick += (self.get_tick_offset() + self.resolution)
+            new_event.tick += self.resolution
             sequencer.event_write(new_event, tick=True)
 
     def inc_current_measure(self):
@@ -70,12 +70,13 @@ class LoopedTrack(midi.Track):
             qualifies = lambda e: isinstance(e, midi.NoteEvent) and e.tick >= start_tick and e.tick < end_tick
         ret = []
         for event in filter(qualifies, self):
-            if isinstance(event, midi.NoteOnEvent):
-                self.open_events[event.pitch] = event
-            if isinstance(event, midi.NoteOffEvent):
-                del self.open_events[event.pitch]
             new_tick = event.tick + self.get_tick_offset()
             new_event = event.copy(tick=new_tick)
+            if isinstance(new_event, midi.NoteOnEvent):
+                self.open_events[event.pitch] = new_event
+            if isinstance(new_event, midi.NoteOffEvent):
+                if new_event.pitch in self.open_events:
+                    del self.open_events[new_event.pitch]
             ret.append(new_event)
         self.inc_current_measure()
         return ret
@@ -105,6 +106,8 @@ class Looper(object):
         self.last_push = None
         self.ticks_per_measure = self.beats_per_measure * self.resolution
         self.sequencer_playing = False
+        # XXX: teehee
+        self.next_push = -(self.beats_per_measure / 2.0)
         self.start_sequencer()
 
     def start_sequencer(self):
@@ -132,32 +135,17 @@ class Looper(object):
                 return True
         return False
 
-    @property
-    def need_push(self):
-        """
-        True once halfway through the first measure.
-        Every measure length after that point.
-        """
-        if not self.playing:
-            if self.sequencer_playing:
-                #self.stop_sequencer()
-                self.last_push = None
-            return
-        if self.last_push is None:
-            ret = True
-        else:
-            now = self.sequencer.queue_get_tick_time()
-            ret = (now - self.last_push) >= self.ticks_per_measure
-        if ret:
-            self.last_push = self.sequencer.queue_get_tick_time()
-        return ret
+    def push_needed(self):
+        now = self.sequencer.queue_get_tick_time()
+        if now > self.next_push:
+            self.next_push += (self.beats_per_measure * self.resolution)
+            return True
+        return False
 
     def think(self):
-        if not self.need_push:
+        if not self.push_needed():
             return
         print "Push tick-time!", self.sequencer.queue_get_tick_time()
-        if not self.sequencer_playing:
-            self.start_sequencer()
         for track in self.tracks:
             if not track.playing:
                 continue
@@ -168,7 +156,7 @@ class Looper(object):
     def write_event(self, event):
         if not isinstance(event, midi.NoteEvent):
             return
-        print "write_event(", event, ")"
+        #print "write_event(", event, ")"
         buf = self.sequencer.event_write(event, tick=True)
         #buf = self.sequencer.event_write(event, False, False, True)
         if buf is not None and buf < 1000:
@@ -177,5 +165,5 @@ class Looper(object):
 
     @property
     def next_logical_measure(self):
-        print "NL", math.ceil(self.sequencer.queue_get_tick_time() / float(self.ticks_per_measure))
+        print "NL", math.ceil((self.sequencer.queue_get_tick_time() + self.resolution) / float(self.ticks_per_measure))
         return math.ceil(self.sequencer.queue_get_tick_time() / float(self.ticks_per_measure))

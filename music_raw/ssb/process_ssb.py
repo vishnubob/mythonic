@@ -8,6 +8,7 @@ path = "ssb.mid"
 mf = midi.read_midifile(path)
 
 def handle_drum_track(track):
+    track.make_ticks_abs()
     drumset = set()
     drumhash = {}
     channel = 0
@@ -21,14 +22,15 @@ def handle_drum_track(track):
         drumhash[note].append(_track)
 
     for event in track:
-        if event.__class__ in (midi.events.NoteOnEvent, midi.events.NoteOffEvent):
-            drumhash[event.data[0]][0].append(event)
+        if isinstance(event, midi.NoteEvent):
+            drumhash[event.pitch][0].append(event.copy())
         else:
             for key in drumhash:
-                drumhash[key][0].append(event)
+                drumhash[key][0].append(eval(repr(event)))
 
     for key in drumhash:
         fn = "drum_%s.mid" % key
+        drumhash[key].make_ticks_rel()
         midi.write_midifile(fn, drumhash[key])
 
 track = mf[0]
