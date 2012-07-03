@@ -14,7 +14,7 @@ import ss
 TEST_TRACK = "../music_raw/music_test/reasonable_test_2.mid"
 BOX_HEIGHT = 100
 BOX_WIDTH = 100
-FRAME_COUNT = 1
+FRAME_COUNT = 3
 
 screen = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT)) #make screen
 
@@ -53,7 +53,7 @@ class PyGHardwareChain(HardwareChain):
 
     def get_touch_triggers(self):
         touched = self._touched
-        self._touched = [[False] * 4] * FRAME_COUNT
+        self._touched = [[False] * 4 for i in range(len(self.addresses))]
         return touched
 
 class PyGCoordinator(Coordinator):
@@ -70,10 +70,9 @@ class PyGCoordinator(Coordinator):
                 self.hc._touched[addr][0] = True
                 print "Clicked", addr
         super(PyGCoordinator, self).think()
-        print [pf.touched for pf in self.effects_manager.picture_frames]
 
 looper = make_looper([TEST_TRACK], 128, 0)
-picture_frames = [ss.SSPictureFrame(looper)] * FRAME_COUNT
+picture_frames = [ss.SSPictureFrame(looper) for i in range(FRAME_COUNT)]
 patterns = []
 #patterns = [[picture_frames[0]]]
 effects_manager = ss.SSManager(picture_frames, patterns)
