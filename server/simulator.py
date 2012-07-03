@@ -11,25 +11,45 @@ from music import make_looper
 from biscuit import HardwareChain
 import ss
 
-TEST_TRACK = "../music_raw/music_test/reasonable_test_2.mid"
-BOX_HEIGHT = 100
+MIDI_CLIENT = 128
+MIDI_PORT = 0
+TEST_TRACKS = [
+    "../music_raw/drum_36.mid",
+    "../music_raw/drum_37.mid",
+    "../music_raw/drum_39.mid",
+    "../music_raw/drum_42.mid",
+    "../music_raw/drum_49.mid",
+    "../music_raw/drum_51.mid",
+    "../music_raw/drum_77.mid"
+]
+PATTERNS = []
+FRAME_COUNT = len(TEST_TRACKS)
+BOX_HEIGHT = 75
 BOX_WIDTH = 100
-FRAME_COUNT = 3
+SCREEN = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT))
 
-screen = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT)) #make screen
+def main():
+    looper = make_looper(TEST_TRACKS, MIDI_CLIENT, MIDI_PORT)
+    picture_frames = []
 
-pygame.display.flip()
+    for i in range(FRAME_COUNT):
+        picture_frames.append(ss.SSPictureFrame(looper, [i]))
+    effects_manager = ss.SSManager(picture_frames, PATTERNS)
+    hc = PyGHardwareChain(FRAME_COUNT)
+    pygame.display.flip()
+    manager = PyGCoordinator(hc, effects_manager)
+    manager.run()
 
 class PyGHardwareChain(HardwareChain):
 
     def __init__(self, length):
         super(PyGHardwareChain, self).__init__(None, length)
-        self._touched = [[False] * 4] * FRAME_COUNT
+        self._touched = [[False] * 4] * len(self.addresses)
 
     def draw_light(self, address, column, rgb):
         y = address * BOX_HEIGHT
         x = column * BOX_WIDTH
-        pygame.draw.rect(screen, rgb, (x, y, BOX_WIDTH, BOX_HEIGHT))
+        pygame.draw.rect(SCREEN, rgb, (x, y, BOX_WIDTH, BOX_HEIGHT))
 
     def send_light_data(self, address, light_data):
         ch = light_data.pages[light_data.page_idx]
@@ -71,11 +91,5 @@ class PyGCoordinator(Coordinator):
                 print "Clicked", addr
         super(PyGCoordinator, self).think()
 
-looper = make_looper([TEST_TRACK], 128, 0)
-picture_frames = [ss.SSPictureFrame(looper) for i in range(FRAME_COUNT)]
-patterns = []
-#patterns = [[picture_frames[0]]]
-effects_manager = ss.SSManager(picture_frames, patterns)
-hc = PyGHardwareChain(FRAME_COUNT)
-manager = PyGCoordinator(hc, effects_manager)
-manager.run()
+if __name__ == "__main__":
+    main()
