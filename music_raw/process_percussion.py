@@ -4,7 +4,7 @@ import os
 
 import midi
 
-path = os.path.dirname(__file__) + "/Percussion_Dance_Rhythm.mid"
+path = os.path.join(os.path.dirname(__file__), "Percussion_Dance_Rhythm.mid")
 mf = midi.read_midifile(path)
 drumset = set()
 
