@@ -28,6 +28,7 @@ class Coordinator(biscuit.Manager):
                 picture_frames[addr].touch()
         self.effects_manager.update()
         for addr, pf in enumerate(picture_frames):
+            pf.untouch()
             self.hc.set_light(addr, self.RED_IDX, pf.red)
             self.hc.set_light(addr, self.GREEN_IDX, pf.green)
             self.hc.set_light(addr, self.BLUE_IDX, pf.blue)

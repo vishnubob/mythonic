@@ -52,6 +52,10 @@ class PictureFrame(object):
         else:
             self.activate()
         self._touched = True
+    
+    def untouch(self):
+        self._touched = False
+
     touched = property(lambda self: self._touched)
 
     def activate(self):
