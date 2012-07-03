@@ -4,7 +4,7 @@ def triangle(i, maximum):
     return maximum - abs(i % (2 * maximum) - maximum)
 
 def sawtooth(i, maximum):
-    return i % (maximum)
+    return i % maximum
 
 def sin_abs(i, invert=False):
     value = abs(math.sin(i))
