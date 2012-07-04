@@ -34,7 +34,7 @@ def main():
 
     for i in range(FRAME_COUNT):
         picture_frames.append(ss.SSPictureFrame(looper, [i]))
-    effects_manager = ss.SSManager(picture_frames, PATTERNS)
+    effects_manager = ss.SSManager(picture_frames, PATTERNS, looper)
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
     manager = PyGCoordinator(hc, effects_manager)
@@ -88,7 +88,6 @@ class PyGCoordinator(Coordinator):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 addr = self.pos_to_addr(event.pos)
                 self.hc._touched[addr][0] = True
-                print "Clicked", addr
         super(PyGCoordinator, self).think()
 
 if __name__ == "__main__":
