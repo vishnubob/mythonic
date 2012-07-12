@@ -15,6 +15,7 @@ import midi
 from manager import Coordinator
 from manager import EffectsManager
 from pictureframe import MusicalPictureFrame
+from pictureframe import Storyboard
 from music import make_looper
 import mmath
 from biscuit import HardwareChain
@@ -73,7 +74,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
         patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
 
-    return Coordinator(hc, SSManager(picture_frames, patterns, looper))
+    return SSCoordinator(hc, Storyboard(picture_frames, patterns), looper)
 
 class SSPictureFrame(MusicalPictureFrame):
 
@@ -100,7 +101,7 @@ class SSPictureFrame(MusicalPictureFrame):
         Effects for when this frame is not active and not screensavering
         """
         if PRINT_STATUS: print "inactive: ", offset
-        #self.white = self.MAX_WHITE / 3
+        self.white = self.MAX_WHITE / 3
 
     def step_active(self, offset):
         """
@@ -114,6 +115,7 @@ class SSPictureFrame(MusicalPictureFrame):
         hue = mmath.sawtooth(t / 10.0, 1)
         self.hsv = (hue, 1, 0.5)
         self.uv = int(mmath.sin_abs(t/3, True) * self.MAX_UV)
+        #self.uv = int(mmath.triangle(t/3, self.MAX_UV))
 
     def step_pattern_hint(self, offset):
         """
@@ -140,42 +142,48 @@ class SSPictureFrame(MusicalPictureFrame):
         self.uv = abs(int(random.random() * self.MAX_UV))
         #self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
 
+class SSCoordinator(Coordinator):
+    """
+    Coordinates hardware with effect/mode management.
+    """
+    SCREENSAVER_TIMEOUT = 60 * 3
+
+    def __init__(self, hc, storyboard, looper=None):
+        self.looper = looper
+        #self.screensaver = Screensaver(storyboard, 5)
+        self.interactive_mode = SSManager(storyboard)
+        super(SSCoordinator, self).__init__(hc, storyboard)
+
+    def select_effects_manager(self):
+        return self.interactive_mode
+
+    def think(self):
+        super(SSCoordinator, self).think()
+        if self.looper is not None:
+            self.looper.think()
+
 class SSManager(EffectsManager):
     """
     Runner for Sonic Storyboard.
     """
 
-    def __init__(self, picture_frames, patterns, looper=None):
-        self.looper = looper
-        # TODO: Get rid of this screensaver crap and implement it properly
-        self.screensaver = Screensaver(picture_frames, patterns, 5)
-        self.screensaver_timeout = 60 * 3
-        #self.screensaver_timeout = 10
-        super(self.__class__, self).__init__(picture_frames, patterns)
+    def __init__(self, storyboard, looper=None):
+        super(SSManager, self).__init__(storyboard)
 
-    def update(self):
+    def think(self):
         """
         Manage effects
         """
-        if self.untouched_for >= self.screensaver_timeout:
-            if not self.screensaver.active:
-                self.screensaver.activate()
-        else:
-            #print self.screensaver_timeout - self.untouched_for
-            if self.screensaver.active:
-                self.screensaver.deactivate()
-            for idx, pf in enumerate(self.picture_frames):
-                if pf.active:
-                    pf.step_active(idx)
-                    if self.in_target_pattern(pf):
-                        if self.pattern_complete:
-                            pf.step_bonus(idx)
-                        else:
-                            pf.step_pattern_hint(idx)
-                else:
-                    pf.step_inactive(idx)
-        if self.looper is not None:
-            self.looper.think()
+        for idx, pf in enumerate(self.storyboard):
+            if pf.active:
+                pf.step_active(idx)
+                if self.storyboard.in_target_pattern(pf):
+                    if self.storyboard.pattern_complete:
+                        pf.step_bonus(idx)
+                    else:
+                        pf.step_pattern_hint(idx)
+            else:
+                pf.step_inactive(idx)
 
 class Screensaver(EffectsManager):
 
@@ -211,7 +219,6 @@ class Screensaver(EffectsManager):
     def think(self):
         if not self.active or self.current_pattern is None:
             return
-        print "SCREENSAVER!"
         pattern = self.current_pattern
         if pattern is None:
             pattern = []

@@ -4,11 +4,11 @@ import biscuit
 
 class Coordinator(biscuit.Manager):
     """
-    Reads state of hardware, updates picture frames, and
-    then delegates to the effects manager.
+    Reads state of hardware, updates storyboard, and
+    then delegates to an effects manager.
 
-    After delegation to the effects manager, reads state of
-    picture frames and sends the appropriate updates to the hardware.
+    After delegation to said effects manager, reads state of
+    storyboard and sends the appropriate updates to the hardware.
     """
 
     RED_IDX = 0
@@ -17,17 +17,29 @@ class Coordinator(biscuit.Manager):
     WHITE_IDX = 4
     UV_IDX = 5
 
-    def __init__(self, hc, effects_manager):
+    def __init__(self, hc, storyboard):
         self.hc = hc
-        self.effects_manager = effects_manager
+        self.storyboard = storyboard
+        self.last_effects_manager = None
+
+    def select_effects_manager(self):
+        """
+        The effects manager to delegate to
+        """
 
     def think(self):
-        picture_frames = self.effects_manager.picture_frames
+        effects_manager = self.select_effects_manager()
+        if effects_manager != self.last_effects_manager:
+            if self.last_effects_manager is not None:
+                self.last_effects_manager.deactivate()
+            self.last_effects_manager = effects_manager
+            effects_manager.activate()
         for addr, directions in enumerate(self.hc.get_touch_triggers()):
             if reduce(lambda a, b: a or b, directions):
-                picture_frames[addr].touch()
-        self.effects_manager.update()
-        for addr, pf in enumerate(picture_frames):
+                position = self.hc.addresses.index(addr)
+                self.storyboard[position].touch()
+        effects_manager.think()
+        for addr, pf in enumerate(self.storyboard):
             pf.untouch()
             self.hc.set_light(addr, self.RED_IDX, pf.red)
             self.hc.set_light(addr, self.GREEN_IDX, pf.green)
@@ -40,54 +52,31 @@ class EffectsManager(object):
     Manages effects by modifying PictureFrame instances.
     """
 
-    def __init__(self, picture_frames, patterns=[]):
-        self.picture_frames = picture_frames
-        self.patterns = patterns
-        self.initialized_at = time.time()
+    def __init__(self, storyboard):
+        self.storyboard = storyboard
+        self.activated_at = None
+        self.deactivated_at = None
 
-    def update(self):
+    def think(self):
         """
         Manage effects
         """
 
+    def activate(self):
+        """
+        """
+        self.activated_at = time.time()
+
+    def deactivate(self):
+        """
+        """
+        for pf in self.storyboard:
+            pf.blackout()
+        self.deactivated_at = time.time()
+
     @property
     def run_time(self):
-        return time.time() - self.initialized_at
-
-    @property
-    def touched_frames(self):
-        return filter(lambda pf: pf.touched, self.picture_frames)
-
-    @property
-    def active_frames(self):
-        return filter(lambda pf: pf.active, self.picture_frames)
-
-    @property
-    def untouched_for(self):
-        """
-        Number of seconds since creation we have gone without a touch
-        """
-        most_recent = self.initialized_at
-        for history in [pf.touch_history for pf in self.picture_frames]:
-            most_recent = max(history + [most_recent])
-        return time.time() - most_recent
-
-    @property
-    def pattern_complete(self):
-        return self.active_frames == self.target_pattern
-
-    @property
-    def target_pattern(self):
-        """
-        To be the "target pattern"
-          1. all active frames must be within the pattern
-          2. the  start of pattern must be an active frame
-        """
-        considered = self.active_frames
-        for pattern in self.patterns:
-            if considered <= pattern and pattern[0] <= considered:
-                return pattern
-        return None
-
-    def in_target_pattern(self, pf):
-        return self.target_pattern is not None and pf in self.target_pattern
+        if self.activated_at is None:
+            return None
+        else:
+            return time.time() - self.activated_at

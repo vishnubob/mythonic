@@ -1,6 +1,53 @@
 import colorsys
 import time
 
+class Storyboard(list):
+    """
+    A container for picture frames and patterns with convenience
+    methods for inspecting both.
+    """
+    def __init__(self, picture_frames, patterns):
+        self.patterns = patterns
+        super(Storyboard, self).__init__(picture_frames)
+
+    @property
+    def touched_frames(self):
+        return filter(lambda pf: pf.touched, self)
+
+    @property
+    def active_frames(self):
+        return filter(lambda pf: pf.active, self)
+
+    @property
+    def untouched_for(self):
+        """
+        Number of seconds since creation we have gone without a touch
+        """
+        most_recent = self.initialized_at
+        for history in [pf.touch_history for pf in self.picture_frames]:
+            most_recent = max(history + [most_recent])
+        return time.time() - most_recent
+
+    @property
+    def pattern_complete(self):
+        return self.active_frames == self.target_pattern
+
+    @property
+    def target_pattern(self):
+        """
+        To be the "target pattern"
+          1. all active frames must be within the pattern
+          2. the  start of pattern must be an active frame
+        """
+        considered = self.active_frames
+        for pattern in self.patterns:
+            if considered <= pattern and pattern[0] <= considered:
+                return pattern
+        return None
+
+    def in_target_pattern(self, pf):
+        return self.target_pattern is not None and pf in self.target_pattern
+
 class PictureFrame(object):
     MAX_RED = 0xff
     MIN_RED = 0x0
@@ -52,7 +99,7 @@ class PictureFrame(object):
         else:
             self.activate()
         self._touched = True
-    
+
     def untouch(self):
         self._touched = False
 
@@ -64,6 +111,7 @@ class PictureFrame(object):
     def deactivate(self):
         self._active = False
         self.blackout()
+
     active = property(lambda self: self._active)
 
     @property
@@ -109,4 +157,3 @@ class MusicalPictureFrame(PictureFrame):
             if self.looper.tracks[track].playing:
                 continue
             self.looper.play(track)
-

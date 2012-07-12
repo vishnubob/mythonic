@@ -3,13 +3,13 @@
 import colorsys
 import sys
 
-import biscuit
 import pygame
 
-from manager import Coordinator
-from music import make_looper
-from biscuit import HardwareChain
+import biscuit
 import ss
+import pictureframe
+
+from music import make_looper
 
 MIDI_CLIENT = 128
 MIDI_PORT = 0
@@ -31,16 +31,14 @@ SCREEN = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT))
 def main():
     looper = make_looper(TEST_TRACKS, MIDI_CLIENT, MIDI_PORT)
     picture_frames = []
-
     for i in range(FRAME_COUNT):
         picture_frames.append(ss.SSPictureFrame(looper, [i]))
-    effects_manager = ss.SSManager(picture_frames, PATTERNS, looper)
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
-    manager = PyGCoordinator(hc, effects_manager)
+    manager = PyGCoordinator(hc, pictureframe.Storyboard(picture_frames, PATTERNS), looper)
     manager.run()
 
-class PyGHardwareChain(HardwareChain):
+class PyGHardwareChain(biscuit.HardwareChain):
 
     def __init__(self, length):
         super(PyGHardwareChain, self).__init__(None, length)
@@ -76,7 +74,7 @@ class PyGHardwareChain(HardwareChain):
         self._touched = [[False] * 4 for i in range(len(self.addresses))]
         return touched
 
-class PyGCoordinator(Coordinator):
+class PyGCoordinator(ss.SSCoordinator):
 
     def pos_to_addr(self, pos):
          return int(pos[1]/float(BOX_HEIGHT))
