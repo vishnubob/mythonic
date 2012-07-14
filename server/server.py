@@ -28,7 +28,7 @@ MIDI_TRACKS = [
 ]
 
 ROUTING = {
-    "/dev/ttyUSB0": [1, 2, 3],
+    "/dev/ttyUSB0": [1, 2, 3, 4, 5, 6],
 #    "/dev/ttyUSB1": []
 }
 
