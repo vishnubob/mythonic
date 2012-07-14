@@ -1,5 +1,9 @@
 import math
 
+def segment(t, span, start, end):
+    increment = (end - start) / float(span)
+    return ((t * increment - start) % (end - start)) + start
+
 def triangle(i, maximum):
     return maximum - abs(i % (2 * maximum) - maximum)
 

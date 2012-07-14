@@ -1,6 +1,8 @@
 import colorsys
 import time
 
+import mmath
+
 class Storyboard(list):
     """
     A container for picture frames and patterns with convenience
@@ -113,6 +115,15 @@ class PictureFrame(object):
         self.blackout()
 
     active = property(lambda self: self._active)
+
+    def cycle_hue(self, t, rate, saturation, value):
+        """
+        Rotate hue while maintaining saturation and value.
+
+        rate is revolutions a second
+        """
+        hue = mmath.segment(t, rate, 0, 1)
+        self.hsv = (hue, saturation, value)
 
     @property
     def hsv(self):
