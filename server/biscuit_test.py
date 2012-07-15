@@ -42,7 +42,6 @@ def get_cli():
             raise "WTF"
     except:
         print "Usage: %s /dev/port1 1,12,8 [/dev/port2 2,9,6]" % sys.argv[0]
-        sys.exit(-1)
     return (ports, addresses)
 
 def main():
@@ -51,6 +50,7 @@ def main():
     wd = .0001
     hc = biscuit.HardwareChain(ports, addresses, write_delay=wd)
     manager = TestManager(hc)
+    manager.run()
     try:
         manager.run()
     except:
