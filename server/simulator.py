@@ -35,7 +35,7 @@ def main():
         picture_frames.append(ss.SSPictureFrame(looper, [i]))
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
-    manager = PyGCoordinator(hc, pictureframe.Storyboard(picture_frames, PATTERNS), looper)
+    manager = PyGManager(hc, pictureframe.Storyboard(picture_frames, PATTERNS))
     manager.run()
 
 class PyGHardwareChain(biscuit.HardwareChain):
@@ -74,7 +74,7 @@ class PyGHardwareChain(biscuit.HardwareChain):
         self._touched = [[False] * 4 for i in range(len(self.addresses))]
         return touched
 
-class PyGCoordinator(ss.SSCoordinator):
+class PyGManager(ss.SSManager):
 
     def pos_to_addr(self, pos):
          return int(pos[1]/float(BOX_HEIGHT))
@@ -86,7 +86,7 @@ class PyGCoordinator(ss.SSCoordinator):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 addr = self.pos_to_addr(event.pos)
                 self.hc._touched[addr][0] = True
-        super(PyGCoordinator, self).think()
+        super(PyGManager, self).think()
 
 if __name__ == "__main__":
     main()

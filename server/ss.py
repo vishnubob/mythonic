@@ -69,7 +69,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
         patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
 
-    return SSCoordinator(hc, Storyboard(picture_frames, patterns), looper)
+    return SSManager(hc, Storyboard(picture_frames, patterns), looper)
 
 class SSPictureFrame(pictureframe.MusicalPictureFrame):
 
@@ -134,7 +134,7 @@ class SSPictureFrame(pictureframe.MusicalPictureFrame):
         self.uv = abs(int(random.random() * self.MAX_UV))
         #self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
 
-class SSCoordinator(manager.StoryManager):
+class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
     """
@@ -144,7 +144,7 @@ class SSCoordinator(manager.StoryManager):
     def __init__(self, hc, storyboard):
         self.screensaver = Screensaver(storyboard, 5)
         self.instrument = Instrument(storyboard)
-        super(SSCoordinator, self).__init__(hc, storyboard)
+        super(SSManager, self).__init__(hc, storyboard)
 
     def select_story(self):
         if self.current_story is None:
