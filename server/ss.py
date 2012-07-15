@@ -141,17 +141,36 @@ class SSManager(manager.StoryManager):
     #SCREENSAVER_TIMEOUT = 60 * 3
     SCREENSAVER_TIMEOUT = 5#0 * 3
 
-    def __init__(self, hc, storyboard):
+    def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, 5)
         self.instrument = Instrument(storyboard)
+        self.looper = looper
         super(SSManager, self).__init__(hc, storyboard)
 
+    def think(self):
+        super(SSManager, self).think()
+        if self.looper is not None:
+            self.looper.think()
+
     def select_story(self):
+        # Start off with instrument mode
         if self.current_story is None:
             return self.instrument
+        #if self.storyboard.pattern_complete:
+            
         if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
             return self.screensaver
-        return self.instrument
+        # Come out of screensaver mode into instrument mode
+        elif isinstance(self.current_story, Screensaver):
+            return self.instrument
+        if not self.current_story.finished:
+            return self.current_story
+       
+class Bonus(manager.Story):
+
+    def transition(self):
+        for pf in self.storyboard:
+            pf.blackout()
 
 class Instrument(manager.Story):
 
@@ -167,10 +186,7 @@ class Instrument(manager.Story):
             if pf.active:
                 pf.step_active(idx)
                 if self.storyboard.in_target_pattern(pf):
-                    if self.storyboard.pattern_complete:
-                        pf.step_bonus(idx)
-                    else:
-                        pf.step_pattern_hint(idx)
+                    pf.step_pattern_hint(idx)
             else:
                 pf.step_inactive(idx)
         return True
@@ -191,6 +207,7 @@ class Screensaver(manager.Story):
     active = property(lambda self: self._active)
 
     def transition(self):
+        print "transitioning"
         for pf in self.storyboard:
             pf.deactivate()
         return False

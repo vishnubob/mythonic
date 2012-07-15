@@ -61,7 +61,7 @@ class Story(object):
     def __init__(self, storyboard):
         self.storyboard = storyboard
         self.transitioned = False
-        self.last_activated = None
+        self.finished = False
 
     def think(self):
         """
@@ -70,7 +70,11 @@ class Story(object):
         if not self.transitioned:
             self.transitioned = not self.transition()
         else:
-            self.transitioned = self.plot()
+            if self.plot():
+                self.finished = False
+            else:
+                self.finished = True
+                self.transitioned = True
 
     def transition(self):
         """
@@ -90,9 +94,10 @@ class Story(object):
 
     def deactivate(self):
         self._active = False
+        self.finished = False
+        self.transitioned = False
 
     def activate(self):
         self._active = True
-        self.last_activated = time.time()
 
     active = property(lambda self: self._active)

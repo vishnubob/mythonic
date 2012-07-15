@@ -35,7 +35,7 @@ def main():
         picture_frames.append(ss.SSPictureFrame(looper, [i]))
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
-    manager = PyGManager(hc, pictureframe.Storyboard(picture_frames, PATTERNS))
+    manager = PyGManager(hc, pictureframe.Storyboard(picture_frames, PATTERNS), looper)
     manager.run()
 
 class PyGHardwareChain(biscuit.HardwareChain):
