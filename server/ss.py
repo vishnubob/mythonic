@@ -12,16 +12,11 @@ import yaml
 import midi.sequencer
 import midi
 
-from manager import Coordinator
-from manager import EffectsManager
-from pictureframe import MusicalPictureFrame
-from pictureframe import Storyboard
+import biscuit
 from music import make_looper
+import manager
 import mmath
-from biscuit import HardwareChain
-
-import pprint
-pp = pprint.PrettyPrinter(indent=4, depth=5)
+import pictureframe
 
 PRINT_STATUS = False
 
@@ -76,7 +71,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
 
     return SSCoordinator(hc, Storyboard(picture_frames, patterns), looper)
 
-class SSPictureFrame(MusicalPictureFrame):
+class SSPictureFrame(pictureframe.MusicalPictureFrame):
 
     def __init__(self, looper, main_tracks=[], bonus_tracks=[]):
         self.looper = looper
@@ -111,11 +106,9 @@ class SSPictureFrame(MusicalPictureFrame):
         t = time.time() + offset
         self.play_main_tracks()
         self.white = self.MIN_WHITE
-        # Slowly cycle through hue
-        hue = mmath.sawtooth(t / 10.0, 1)
-        self.hsv = (hue, 1, 0.5)
+        # Slowly cycle through hue every 20 seconds
+        self.cycle_hue(t, 20, 1, 0.5)
         self.uv = int(mmath.sin_abs(t/3, True) * self.MAX_UV)
-        #self.uv = int(mmath.triangle(t/3, self.MAX_UV))
 
     def step_pattern_hint(self, offset):
         """
@@ -127,7 +120,6 @@ class SSPictureFrame(MusicalPictureFrame):
             self.uv = self.MAX_UV
         elif int(t % 3) == 0:
             self.uv = self.MIN_UV
-
 
     def step_bonus(self, offset):
         """
@@ -142,35 +134,32 @@ class SSPictureFrame(MusicalPictureFrame):
         self.uv = abs(int(random.random() * self.MAX_UV))
         #self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
 
-class SSCoordinator(Coordinator):
+class SSCoordinator(manager.StoryManager):
     """
-    Coordinates hardware with effect/mode management.
+    Manages which stories get activated next
     """
-    SCREENSAVER_TIMEOUT = 60 * 3
+    #SCREENSAVER_TIMEOUT = 60 * 3
+    SCREENSAVER_TIMEOUT = 5#0 * 3
 
-    def __init__(self, hc, storyboard, looper=None):
-        self.looper = looper
-        #self.screensaver = Screensaver(storyboard, 5)
-        self.interactive_mode = SSManager(storyboard)
+    def __init__(self, hc, storyboard):
+        self.screensaver = Screensaver(storyboard, 5)
+        self.instrument = Instrument(storyboard)
         super(SSCoordinator, self).__init__(hc, storyboard)
 
-    def select_effects_manager(self):
-        return self.interactive_mode
+    def select_story(self):
+        if self.current_story is None:
+            return self.instrument
+        if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
+            return self.screensaver
+        return self.instrument
 
-    def think(self):
-        super(SSCoordinator, self).think()
-        if self.looper is not None:
-            self.looper.think()
+class Instrument(manager.Story):
 
-class SSManager(EffectsManager):
-    """
-    Runner for Sonic Storyboard.
-    """
+    def transition(self):
+        for pf in self.storyboard:
+            pf.blackout()
 
-    def __init__(self, storyboard, looper=None):
-        super(SSManager, self).__init__(storyboard)
-
-    def think(self):
+    def plot(self):
         """
         Manage effects
         """
@@ -184,46 +173,36 @@ class SSManager(EffectsManager):
                         pf.step_pattern_hint(idx)
             else:
                 pf.step_inactive(idx)
+        return True
 
-class Screensaver(EffectsManager):
+class Screensaver(manager.Story):
 
-    def __init__(self, picture_frames, patterns, period_length):
-        self._active = False
+    def __init__(self, storyboard, period_length):
         self.period_length = 5
-        super(Screensaver, self).__init__(picture_frames[:], patterns[:])
-
-    def activate(self):
-        if self._active:
-            raise "Screensaver is already activate"
-        self._active = True
-        for pf in self.active_frames:
-            pf.deactivate()
-
-    def deactivate(self):
-        if not self._active:
-            raise "Screensaver was already deactivated"
-        self._active = False
-        for pf in self.active_frames:
-            if not pf.touched:
-                pf.deactivate()
+        super(Screensaver, self).__init__(storyboard)
 
     @property
-    def current_pattern(self):
-        if len(self.patterns) <= 0:
+    def hinted_pattern(self):
+        if len(self.storyboard.patterns) <= 0:
             return None
         idx = int(math.fmod((time.time() / self.period_length), len(self.patterns)))
         return self.patterns[idx]
 
     active = property(lambda self: self._active)
 
-    def think(self):
-        if not self.active or self.current_pattern is None:
-            return
-        pattern = self.current_pattern
+    def transition(self):
+        for pf in self.storyboard:
+            pf.deactivate()
+        return False
+
+    def plot(self):
+        pattern = self.hinted_pattern
+        return True
         if pattern is None:
             pattern = []
-        for idx, pf in enumerate(self.current_pattern):
+        for idx, pf in enumerate(pattern):
             pf.step_pattern_hint(idx)
+        return True
 
 if __name__ == '__main__':
     main()

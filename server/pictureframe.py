@@ -10,6 +10,7 @@ class Storyboard(list):
     """
     def __init__(self, picture_frames, patterns):
         self.patterns = patterns
+        self.initialized_at = time.time()
         super(Storyboard, self).__init__(picture_frames)
 
     @property
@@ -26,7 +27,7 @@ class Storyboard(list):
         Number of seconds since creation we have gone without a touch
         """
         most_recent = self.initialized_at
-        for history in [pf.touch_history for pf in self.picture_frames]:
+        for history in [pf.touch_history for pf in self]:
             most_recent = max(history + [most_recent])
         return time.time() - most_recent
 
