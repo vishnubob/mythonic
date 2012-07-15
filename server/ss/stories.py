@@ -1,6 +1,7 @@
 import manager
 import mmath
 import random
+import time
 
 from ss.pictureframes import *
 
@@ -32,13 +33,13 @@ class SSManager(manager.StoryManager):
         if current is None:
             #return self.startup_test
             return self.instrument
-            #return self.dice
-            #return self.blackout_game
         if isinstance(current, Instrument):
-             if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
-                return self.screensaver
-             if self.storyboard.pattern_complete:
-                return self.storyboard.target_pattern.triggered_story
+            untouched_since = max(current.stage_started_at, self.storyboard.untouched_since)
+            print time.time() - untouched_since
+            if time.time() - untouched_since >= self.SCREENSAVER_TIMEOUT:
+               return self.screensaver
+            if self.storyboard.pattern_complete:
+               return self.storyboard.target_pattern.triggered_story
         if isinstance(current, Screensaver):
             if self.storyboard.touched:
                 return self.instrument
@@ -156,7 +157,7 @@ class Narative(manager.MusicalStory):
         if len(self.foci) == 0:
             return False
         story_length = len(self.foci) * self.time_per_frame
-        focus_idx = int(mmath.segment(t, story_length, 0, len(self.foci)))
+        focus_idx = int(mmath.travel(t, story_length, 0, len(self.foci)))
         focus = self.storyboard[focus_idx]
         for pf in self.storyboard:
             if pf == focus:
