@@ -39,7 +39,7 @@ class FrameLights(object):
         self.flip()
 
 class FrameTouch(object):
-    def __init__(self, address, hc, quiescent_length=10, refresh_length=.2, trigger_threshold=1):
+    def __init__(self, address, hc, quiescent_length=10, refresh_length=.3, trigger_threshold=1):
         self.address = address
         self.quiescent_length = quiescent_length
         self.hc = hc
@@ -91,7 +91,7 @@ class HardwareChain(object):
         # set the tiemout
         for port in list(set(self.ports.values())):
             port.timeout = (self.write_delay * self.timeout_factor)
-        self.write_delay = .001
+        self.write_delay = .01
         self.light_frames = [FrameLights(addr, self) for addr in self.addresses]
         self.touch_frames = [FrameTouch(addr, self) for addr in self.addresses]
         self.frame_idx = 0

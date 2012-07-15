@@ -42,6 +42,7 @@ def get_cli():
             raise "WTF"
     except:
         print "Usage: %s /dev/port1 1,12,8 [/dev/port2 2,9,6]" % sys.argv[0]
+    #print ports, addresses
     return (ports, addresses)
 
 def main():
