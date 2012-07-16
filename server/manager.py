@@ -2,13 +2,13 @@ import time
 
 import biscuit
 
-class Coordinator(biscuit.Manager):
+class StoryManager(biscuit.Manager):
     """
-    Reads state of hardware, updates picture frames, and
-    then delegates to the effects manager.
+    Reads state of hardware, updates storyboard, and
+    then delegates to a story.
 
-    After delegation to the effects manager, reads state of
-    picture frames and sends the appropriate updates to the hardware.
+    After delegation to said story, reads state of
+    storyboard and sends the appropriate updates to the hardware.
     """
 
     RED_IDX = 0
@@ -17,76 +17,96 @@ class Coordinator(biscuit.Manager):
     WHITE_IDX = 4
     UV_IDX = 5
 
-    def __init__(self, hc, effects_manager):
+    def __init__(self, hc, storyboard):
         self.hc = hc
-        self.effects_manager = effects_manager
+        self.storyboard = storyboard
+        self.current_story = None
+
+    def select_story(self):
+        """
+        The story to delegate to
+        """
+
+    def pf_to_addr(self, pf):
+        idx = self.storyboard.index(pf)
+        return self.hc.addresses[idx]
 
     def think(self):
-        picture_frames = self.effects_manager.picture_frames
+        next_story = self.select_story()
+        if next_story != self.current_story:
+            if self.current_story is not None:
+                self.current_story.deactivate()
+            next_story.activate()
+            self.current_story = next_story
+            print "Story changed to", str(next_story.__class__)
         for addr, directions in enumerate(self.hc.get_touch_triggers()):
             if reduce(lambda a, b: a or b, directions):
-                picture_frames[addr].touch()
-        self.effects_manager.update()
-        for addr, pf in enumerate(picture_frames):
+                position = self.hc.addresses.index(addr)
+                self.storyboard[position].touch()
+        self.current_story.think()
+        for pf in self.current_story.storyboard:
+            pf.untouch()
+            addr = self.pf_to_addr(pf)
             self.hc.set_light(addr, self.RED_IDX, pf.red)
             self.hc.set_light(addr, self.GREEN_IDX, pf.green)
             self.hc.set_light(addr, self.BLUE_IDX, pf.blue)
             self.hc.set_light(addr, self.WHITE_IDX, pf.white)
             self.hc.set_light(addr, self.UV_IDX, pf.uv)
 
-class EffectsManager(object):
+class Story(object):
     """
     Manages effects by modifying PictureFrame instances.
     """
 
-    def __init__(self, picture_frames, patterns=[]):
-        self.picture_frames = picture_frames
-        self.patterns = patterns
-        self.initialized_at = time.time()
+    def __init__(self, storyboard):
+        self.storyboard = storyboard
+        self.transitioned = False
+        self.finished = False
+        self.transition_started_at = None
+        self.plot_started_at = None
 
-    def update(self):
+    def think(self):
         """
         Manage effects
         """
+        if not self.transitioned:
+            if self.transition_started_at is None:
+                self.transition_started_at = time.time()
+            t = time.time() - self.transition_started_at
+            self.transitioned = not self.transition(t)
+        else:
+            if self.plot_started_at is None:
+                self.plot_started_at = time.time()
+            t = time.time() - self.plot_started_at
+            if self.plot(t):
+                self.finished = False
+            else:
+                self.finished = True
+                self.transitioned = False
+                self.transition_started_at = None
 
-    @property
-    def run_time(self):
-        return time.time() - self.initialized_at
-
-    @property
-    def touched_frames(self):
-        return filter(lambda pf: pf.touched, self.picture_frames)
-
-    @property
-    def active_frames(self):
-        return filter(lambda pf: pf.active, self.picture_frames)
-
-    @property
-    def untouched_for(self):
+    def transition(self):
         """
-        Number of seconds since creation we have gone without a touch
-        """
-        most_recent = self.initialized_at
-        for history in [pf.touch_history for pf in self.picture_frames]:
-            most_recent = max(history + [most_recent])
-        return time.time() - most_recent
+        Transition into this story
 
-    @property
-    def pattern_complete(self):
-        return self.active_frames == self.target_pattern
-
-    @property
-    def target_pattern(self):
+        Return True if the transition is still in progress
         """
-        To be the "target pattern"
-          1. all active frames must be within the pattern
-          2. the  start of pattern must be an active frame
-        """
-        considered = self.active_frames
-        for pattern in self.patterns:
-            if considered <= pattern and pattern[0] <= considered:
-                return pattern
-        return None
+        return False
 
-    def in_target_pattern(self, pf):
-        return self.target_pattern is not None and pf in self.target_pattern
+    def plot(self):
+        """
+        Modify storyboard
+
+        Return True if plot is ongoing
+        """
+        return False
+
+    def deactivate(self):
+        self._active = False
+        self.finished = False
+        self.transitioned = False
+
+    def activate(self):
+        self._active = True
+
+    active = property(lambda self: self._active)

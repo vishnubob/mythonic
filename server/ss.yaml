@@ -1,54 +1,58 @@
 ---
 midi:
-    path: midi/test.mid
+    enabled: true
+    tracks:
+        - ../music_raw/ssb/drum_37.mid
+        - ../music_raw/ssb/drum_38.mid
+        - ../music_raw/ssb/drum_41.mid
+        - ../music_raw/ssb/drum_42.mid
+        - ../music_raw/ssb/drum_43.mid
 
+
+# Zero-indexed. Refers to their order in ths file.
 patterns:
-    - [0, 1, 2]
-#    - [2]
+    - [0, 1]
+    - [2]
 
 frames:
-    - address: 0
-      main_tracks: [1]
-
     - address: 1
-      main_tracks: [2]
+      main_tracks: [0]
 
     - address: 2
-      main_tracks: [3]
+      main_tracks: [1]
 
     - address: 3
+      main_tracks: [2]
+
     - address: 4
-#    - address: 5
+      main_tracks: [3]
+
+    - address: 5
+      main_tracks: [4]
+
+    - address: 6
+
+    - address: 7
+
+    - address: 8
 #
-#    - address: 4
+    - address: 9
 #
-#    - address: 5
+    - address: 10
 #
-#    - address: 6
+    - address: 11
 #
-#    - address: 7
+    - address: 12
 #
-#    - address: 8
+    - address: 13
 #
-#    - address: 8
+#    - address: 14
 #
-#    - address: 2
+#    - address: 15
 #
-#    - address: 2
+#    - address: 16
 #
-#    - address: 2
-#
-#    - address: 2
-#
-#    - address: 2
-#
-#    - address: 2
-#
-#    - address: 2
-#
-#    - address: 2
-#
-#    - address: 2
+#    - address: 17
 
 # TODO
 # * named patterns

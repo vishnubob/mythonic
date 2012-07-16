@@ -1,6 +1,59 @@
 import colorsys
 import time
 
+import mmath
+
+class Storyboard(list):
+    """
+    A container for picture frames and patterns with convenience
+    methods for inspecting both.
+    """
+    def __init__(self, picture_frames, patterns):
+        for pattern in patterns:
+            for idx, pf_or_idx in enumerate(pattern):
+                if not isinstance(pf_or_idx, PictureFrame):
+                    pattern[idx] = picture_frames[pf_or_idx]
+        self.patterns = patterns
+        self.initialized_at = time.time()
+        super(Storyboard, self).__init__(picture_frames)
+
+    @property
+    def touched_frames(self):
+        return filter(lambda pf: pf.touched, self)
+
+    @property
+    def active_frames(self):
+        return filter(lambda pf: pf.active, self)
+
+    @property
+    def untouched_for(self):
+        """
+        Number of seconds since creation we have gone without a touch
+        """
+        most_recent = self.initialized_at
+        for history in [pf.touch_history for pf in self]:
+            most_recent = max(history + [most_recent])
+        return time.time() - most_recent
+
+    @property
+    def pattern_complete(self):
+        return self.active_frames == self.target_pattern
+
+    @property
+    def target_pattern(self):
+        """
+        To be the "target pattern"
+          1. all active frames must be within the pattern
+          2. the  start of pattern must be an active frame
+        """
+        for pattern in self.patterns:
+            if self.active_frames <= pattern:
+                return pattern
+        return None
+
+    def in_target_pattern(self, pf):
+        return self.target_pattern is not None and pf in self.target_pattern
+
 class PictureFrame(object):
     MAX_RED = 0xff
     MIN_RED = 0x0
@@ -52,6 +105,10 @@ class PictureFrame(object):
         else:
             self.activate()
         self._touched = True
+
+    def untouch(self):
+        self._touched = False
+
     touched = property(lambda self: self._touched)
 
     def activate(self):
@@ -60,7 +117,17 @@ class PictureFrame(object):
     def deactivate(self):
         self._active = False
         self.blackout()
+
     active = property(lambda self: self._active)
+
+    def cycle_hue(self, t, rate, saturation, value):
+        """
+        Rotate hue while maintaining saturation and value.
+
+        rate is revolutions a second
+        """
+        hue = mmath.segment(t, rate, 0, 1)
+        self.hsv = (hue, saturation, value)
 
     @property
     def hsv(self):
@@ -81,6 +148,21 @@ class PictureFrame(object):
         self.blue = self.MIN_BLUE
         self.uv = self.MIN_UV
         self.white = self.MIN_WHITE
+
+    def fadeout(self):
+        self.red = max(self.red - 1, self.MIN_RED)
+        self.green = max(self.green - 1, self.MIN_GREEN)
+        self.blue = max(self.blue - 1, self.MIN_BLUE)
+        self.uv = max(self.uv - 1, self.MIN_UV)
+        self.white = max(self.white - 1, self.MIN_WHITE)
+        work_left = [
+            self.red > self.MIN_RED,
+            self.green > self.MIN_GREEN,
+            self.blue > self.MIN_BLUE,
+            self.uv > self.MIN_UV,
+            self.white > self.MIN_WHITE,
+        ]
+        return reduce(lambda a, b: a or b, work_left)
 
 class MusicalPictureFrame(PictureFrame):
     def __init__(self, looper, tracks):
@@ -105,4 +187,3 @@ class MusicalPictureFrame(PictureFrame):
             if self.looper.tracks[track].playing:
                 continue
             self.looper.play(track)
-

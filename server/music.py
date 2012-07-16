@@ -38,7 +38,7 @@ class LoopedTrack(midi.Track):
         super(LoopedTrack, self).__init__(mf[0])
         self.make_ticks_abs()
         self.max_tick = max([event.tick for event in self])
-        self.max_measure = math.ceil(self.max_tick / (self.resolution * self.beats_per_measure))
+        self.max_measure = math.ceil(self.max_tick / float(self.resolution * self.beats_per_measure))
         self.open_events = {}
 
     def start(self, start_measure):
@@ -108,15 +108,7 @@ class Looper(object):
         self.sequencer_playing = False
         # XXX: teehee
         self.next_push = -(self.beats_per_measure / 2.0)
-        self.start_sequencer()
-
-    def start_sequencer(self):
         self.sequencer.start_sequencer()
-        self.sequencer_playing = True
-
-    def stop_sequencer(self):
-        self.sequencer.stop_sequencer()
-        self.sequencer_playing = False
 
     def play(self, idx):
         print "PLAY!", idx
