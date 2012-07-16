@@ -127,6 +127,7 @@ class SSPictureFrame(pictureframe.MusicalPictureFrame):
         """
         if PRINT_STATUS: print "bonus: ", offset
         self.step_chaos()
+        sys.exit()
 
     def step_chaos(self):
         self.play_tracks()
@@ -157,7 +158,6 @@ class SSManager(manager.StoryManager):
         if self.current_story is None:
             return self.instrument
         #if self.storyboard.pattern_complete:
-            
         if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
             return self.screensaver
         # Come out of screensaver mode into instrument mode
@@ -165,20 +165,21 @@ class SSManager(manager.StoryManager):
             return self.instrument
         if not self.current_story.finished:
             return self.current_story
-       
+
 class Bonus(manager.Story):
 
-    def transition(self):
+    def transition(self, t):
         for pf in self.storyboard:
             pf.blackout()
+
 
 class Instrument(manager.Story):
 
-    def transition(self):
+    def transition(self, t):
         for pf in self.storyboard:
-            pf.blackout()
+            pf.deactivate()
 
-    def plot(self):
+    def plot(self, t):
         """
         Manage effects
         """
@@ -194,31 +195,35 @@ class Instrument(manager.Story):
 class Screensaver(manager.Story):
 
     def __init__(self, storyboard, period_length):
-        self.period_length = 5
+        self.period_length = 6
+        self.pattern_idx = 0
         super(Screensaver, self).__init__(storyboard)
 
-    @property
-    def hinted_pattern(self):
-        if len(self.storyboard.patterns) <= 0:
+    def hinted_pattern(self, t):
+        patterns = self.storyboard.patterns
+        if len(patterns) <= 0:
             return None
-        idx = int(math.fmod((time.time() / self.period_length), len(self.patterns)))
-        return self.patterns[idx]
+        idx = int(t / self.period_length) % len(patterns)
+        if self.pattern_idx != idx:
+            for pf in patterns[self.pattern_idx]:
+                pf.blackout()
+            self.pattern_idx = idx
 
-    active = property(lambda self: self._active)
+        return patterns[self.pattern_idx]
 
-    def transition(self):
-        print "transitioning"
-        for pf in self.storyboard:
-            pf.deactivate()
-        return False
+    def transition(self, t):
+        work_left = [pf.fadeout() for pf in self.storyboard]
+        return reduce(lambda a, b: a or b, work_left)
 
-    def plot(self):
-        pattern = self.hinted_pattern
-        return True
+    def plot(self, t):
+        pattern = self.hinted_pattern(t)
         if pattern is None:
             pattern = []
-        for idx, pf in enumerate(pattern):
-            pf.step_pattern_hint(idx)
+        for offset, pf in enumerate(pattern):
+            if int((t + offset) % 3) == 2:
+                pf.uv = pf.MAX_UV
+            elif int((t + offset) % 3) == 0:
+                pf.uv = pf.MIN_UV
         return True
 
 if __name__ == '__main__':

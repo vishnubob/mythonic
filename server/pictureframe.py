@@ -9,6 +9,10 @@ class Storyboard(list):
     methods for inspecting both.
     """
     def __init__(self, picture_frames, patterns):
+        for pattern in patterns:
+            for idx, pf_or_idx in enumerate(pattern):
+                if not isinstance(pf_or_idx, PictureFrame):
+                    pattern[idx] = picture_frames[pf_or_idx]
         self.patterns = patterns
         self.initialized_at = time.time()
         super(Storyboard, self).__init__(picture_frames)
@@ -42,9 +46,8 @@ class Storyboard(list):
           1. all active frames must be within the pattern
           2. the  start of pattern must be an active frame
         """
-        considered = self.active_frames
         for pattern in self.patterns:
-            if considered <= pattern and pattern[0] <= considered:
+            if self.active_frames <= pattern:
                 return pattern
         return None
 
@@ -145,6 +148,21 @@ class PictureFrame(object):
         self.blue = self.MIN_BLUE
         self.uv = self.MIN_UV
         self.white = self.MIN_WHITE
+
+    def fadeout(self):
+        self.red = max(self.red - 1, self.MIN_RED)
+        self.green = max(self.green - 1, self.MIN_GREEN)
+        self.blue = max(self.blue - 1, self.MIN_BLUE)
+        self.uv = max(self.uv - 1, self.MIN_UV)
+        self.white = max(self.white - 1, self.MIN_WHITE)
+        work_left = [
+            self.red > self.MIN_RED,
+            self.green > self.MIN_GREEN,
+            self.blue > self.MIN_BLUE,
+            self.uv > self.MIN_UV,
+            self.white > self.MIN_WHITE,
+        ]
+        return reduce(lambda a, b: a or b, work_left)
 
 class MusicalPictureFrame(PictureFrame):
     def __init__(self, looper, tracks):

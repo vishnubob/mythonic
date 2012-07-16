@@ -62,19 +62,28 @@ class Story(object):
         self.storyboard = storyboard
         self.transitioned = False
         self.finished = False
+        self.transition_started_at = None
+        self.plot_started_at = None
 
     def think(self):
         """
         Manage effects
         """
         if not self.transitioned:
-            self.transitioned = not self.transition()
+            if self.transition_started_at is None:
+                self.transition_started_at = time.time()
+            t = time.time() - self.transition_started_at
+            self.transitioned = not self.transition(t)
         else:
-            if self.plot():
+            if self.plot_started_at is None:
+                self.plot_started_at = time.time()
+            t = time.time() - self.plot_started_at
+            if self.plot(t):
                 self.finished = False
             else:
                 self.finished = True
-                self.transitioned = True
+                self.transitioned = False
+                self.transition_started_at = None
 
     def transition(self):
         """

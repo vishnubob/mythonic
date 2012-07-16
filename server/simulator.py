@@ -22,7 +22,7 @@ TEST_TRACKS = [
     "../music_raw/drum_51.mid",
     "../music_raw/drum_77.mid"
 ]
-PATTERNS = []
+PATTERNS = [[0, 1], [5, 6], [4, 6]]
 FRAME_COUNT = len(TEST_TRACKS)
 BOX_HEIGHT = 75
 BOX_WIDTH = 100
