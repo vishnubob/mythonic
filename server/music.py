@@ -38,7 +38,7 @@ class LoopedTrack(midi.Track):
         super(LoopedTrack, self).__init__(mf[0])
         self.make_ticks_abs()
         self.max_tick = max([event.tick for event in self])
-        self.max_measure = math.ceil(self.max_tick / (self.resolution * self.beats_per_measure))
+        self.max_measure = math.ceil(self.max_tick / float(self.resolution * self.beats_per_measure))
         self.open_events = {}
 
     def start(self, start_measure):
