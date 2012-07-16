@@ -187,7 +187,7 @@ stats: $(TRG)
 hex: $(HEXTRG)
 
 upload: hex
-	./arduino_reset.py
+	#./arduino_reset.py
 	$(AVRDUDE) -c arduino   			\
 	-p m328p  -P /dev/ttyUSB0 -D 	\
 	-F \

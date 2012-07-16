@@ -5,6 +5,7 @@
 #include <util/delay.h>
 #include <avr/wdt.h> 
 #include "arduino/BiscuitSerial.h"
+#include <compat/deprecated.h>
 
 #define BOARD_ADDR          0
 #define LED_COUNT           6
@@ -112,6 +113,44 @@ private:
     unsigned char _pin;
 };
 
+/******************************************************************************
+ ** Touch
+ ******************************************************************************/
+
+#define TOUCH_SAMPLES 100
+
+class TouchSet
+{
+public:
+    TouchSet()
+    {
+        _sensors[0] = CapSense(A0, A1);
+        _sensors[1] = CapSense(A0, A2);
+        _sensors[2] = CapSense(A0, A3);
+        _sensors[3] = CapSense(A0, A4);
+        _sensor_idx = 0;
+    }
+
+    void step()
+    {
+        CapSense *current_sensor = _sensors + _sensor_idx;
+        current_sensor->step_sensor();
+        if (current_sensor->is_init_state())
+        {
+            _sensor_idx = (_sensor_idx + 1) % TOUCH_COUNT;
+        }
+    }
+
+    unsigned long get_sensor_value(uint8_t sensor_idx)
+    {
+        return _sensors[sensor_idx].get_current_value();
+    }
+
+private:
+    CapSense _sensors[TOUCH_COUNT];
+    volatile uint8_t _sensor_idx;
+};
+
 
 /******************************************************************************
  ** Globals
@@ -120,44 +159,9 @@ private:
 #define LIGHT_MSG (LED_COUNT * FRAME_COUNT)
 
 Pin             leds[LED_COUNT];
+TouchSet        touchset;
 uint8_t         board_addr;
 uint8_t         light_buffer[LIGHT_MSG];
-
-/******************************************************************************
- ** Touch
- ******************************************************************************/
-
-#define TOUCH_TIME 3
-
-CapSense tch1 = CapSense(A0, A1);
-CapSense tch2 = CapSense(A0, A2);
-CapSense tch3 = CapSense(A0, A3);
-CapSense tch4 = CapSense(A0, A4);
-
-uint8_t get_touch_sample()
-{
-    static int touch_sensor = 0;
-    uint16_t val;
-    switch(touch_sensor)
-    {
-        case 0:
-            val = tch1.capSense(TOUCH_TIME);
-            break;
-        case 1:
-            val = tch2.capSense(TOUCH_TIME);
-            break;
-        case 2:
-            val = tch3.capSense(TOUCH_TIME);
-            break;
-        case 3:
-            val = tch4.capSense(TOUCH_TIME);
-            break;
-        default:
-            val = 0;
-    }
-    touch_sensor = (touch_sensor + 1) % TOUCH_COUNT;
-    return min(0x7f, val >> 1);
-}
 
 /******************************************************************************
  ** Setup
@@ -184,13 +188,16 @@ void setup()
     for (uint8_t addr = 0; addr <= board_addr; ++addr)
     {
         digitalWrite(GRN, HIGH);
-        delay(300);
+        delay(30);
         digitalWrite(GRN, LOW);
-        delay(300);
+        delay(30);
     }
         
     memset(light_buffer, 0, LIGHT_MSG * sizeof(char));
     digitalWrite(GRN, HIGH);
+    // enable timer2 overflow interrupt
+    // for touch sensors
+    sbi(TIMSK2, TOIE2);
 }
 
 /******************************************************************************
@@ -269,7 +276,8 @@ void loop(void)
                 } else
                 if (serial_command == TOUCH_COMMAND)
                 {
-                    uint8_t val = get_touch_sample();
+                    //uint8_t val = get_touch_sample();
+                    uint8_t val = 0;
                     enable_serial_output();
                     Serial.write(val);
                     disable_serial_output();
@@ -298,3 +306,7 @@ void loop(void)
 
 }
 
+SIGNAL(TIMER2_OVF_vect)
+{
+    touchset.step();
+}

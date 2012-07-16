@@ -15,18 +15,23 @@
 #include "WProgram.h"
 #endif
 
+enum SensorState { SENSOR_CHARGE, SENSOR_CHARGE_STEP, SENSOR_DISCHARGE, SENSOR_DISCHARGE_STEP, SENSOR_CALIBRATE };
+
 // library interface description
 class CapSense
 {
   // user-accessible "public" interface
   public:
   // methods
+	CapSense();
 	CapSense(uint8_t sendPin, uint8_t receivePin);
-	long capSenseRaw(uint8_t samples);
-	long capSense(uint8_t samples);
 	void set_CS_Timeout_Millis(unsigned long timeout_millis);
 	void reset_CS_AutoCal();
 	void set_CS_AutocaL_Millis(unsigned long autoCal_millis);
+
+    void step_sensor(void);
+    bool is_init_state(void) { return sensor_mode == SENSOR_CHARGE; }
+    unsigned long get_current_value(void) { return current_value; }
   // library-accessible "private" interface
   private:
   // variables
@@ -37,6 +42,7 @@ class CapSense
 	unsigned long  CS_AutocaL_Millis;
 	unsigned long  lastCal;
 	unsigned long  total;
+	unsigned long  current_value;
 	uint8_t sBit;   // send pin's ports and bitmask
 	volatile uint8_t *sReg;
 	volatile uint8_t *sOut;
@@ -44,8 +50,7 @@ class CapSense
 	volatile uint8_t *rReg;
 	volatile uint8_t *rIn;
 	volatile uint8_t *rOut;
-  // methods
-	int SenseOneCycle(void);
+	volatile SensorState sensor_mode;
 };
 
 #endif
