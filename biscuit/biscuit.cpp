@@ -4,10 +4,9 @@
 #include <math.h>
 #include <util/delay.h>
 #include <avr/wdt.h> 
-#include "arduino/BiscuitSerial.h"
 #include <compat/deprecated.h>
+#include "board_address.h"
 
-#define BOARD_ADDR          0
 #define LED_COUNT           6
 #define TOUCH_COUNT         4
 #define DE485_PIN           7
@@ -24,52 +23,8 @@
 const int _led_map[] = {9, 10, 11, 3, 5, 6};
 
 /******************************************************************************
- ** EEPROM reads / writer helper functions
+ ** serial read / writer helper functions
  ******************************************************************************/
-
-uint8_t read_byte(int addr)
-{
-    return (uint8_t)EEPROM.read(addr);
-}
-
-void write_byte(int addr, uint8_t value)
-{
-    EEPROM.write(addr, value);
-}
-
-int read_int(int addr)
-{
-    unsigned char a = EEPROM.read(addr++);
-    unsigned char b = EEPROM.read(addr);
-    return static_cast<int>(a | (b << 8));
-}
-
-void write_int(int addr, int value)
-{
-    EEPROM.write(addr++, (value & 0xFF));
-    EEPROM.write(addr, ((value >> 8) & 0xFF));
-}
-
-long read_long(int addr)
-{
-    unsigned char a = EEPROM.read(addr++);
-    unsigned char b = EEPROM.read(addr++);
-    unsigned char c = EEPROM.read(addr++);
-    unsigned char d = EEPROM.read(addr);
-    return static_cast<long>(a | 
-            (static_cast<long>(b) << 8) | 
-            (static_cast<long>(c) << 16) | 
-            (static_cast<long>(d) << 24));
-}
-
-void write_long(int addr, long value)
-{
-    EEPROM.write(addr++, (value & 0xFF));
-    EEPROM.write(addr++, ((value >> 8) & 0xFF));
-    EEPROM.write(addr++, ((value >> 16) & 0xFF));
-    EEPROM.write(addr, ((value >> 24) & 0xFF));
-}
-
 
 void enable_serial_output()
 {
@@ -83,6 +38,7 @@ void enable_serial_output()
 void disable_serial_output()
 {
     Serial.flush();
+    // XXX: DELAY
     delay(5);
     // turn off transmitter
     digitalWrite(DE485_PIN, LOW);
@@ -183,7 +139,7 @@ void setup()
         leds[ch].set(0);
     }
     
-    board_addr = read_byte(BOARD_ADDR);
+    board_addr = BOARD_ADDR;
     /* blink out our board address */
     for (uint8_t addr = 0; addr <= board_addr; ++addr)
     {
