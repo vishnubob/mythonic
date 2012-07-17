@@ -3,9 +3,7 @@
 import math
 import random
 import serial
-import signal
 import sys
-import time
 
 import yaml
 
@@ -64,31 +62,11 @@ def load_manager(tty_dev, config, midi_client, midi_port):
 
 class SSPictureFrame(pictureframe.PictureFrame):
 
-    def step_inactive(self, offset):
-        """
-        Effects for when this frame is not active and not screensavering
-        """
-        if PRINT_STATUS: print "inactive: ", offset
-        self.white = self.MAX_WHITE / 3
-
-    def step_active(self, offset):
-        """
-        Effects for after a picture frame has been activated.
-        """
-        if PRINT_STATUS: print "active: ", offset
-        t = time.time() + offset
-        self.white = self.MIN_WHITE
-        # Slowly cycle through hue every 20 seconds
-        self.cycle_hue(t, 20, 1, 0.5)
-        self.uv = int(mmath.sin_abs(t/3, True) * self.MAX_UV)
-
-    def step_pattern_hint(self, offset):
+    def pattern_hint(self, t):
         """
         Hint that this selectd picture frame is part of a pattern.
         """
-        if PRINT_STATUS: print "active_hint: ", offset
-        t = time.time() + offset
-        if int(t % 3) == 2:
+        if int(t % 2) == 1:
             self.uv = self.MAX_UV
         else:
             self.uv = self.MIN_UV
@@ -147,19 +125,23 @@ class Instrument(manager.Story):
         for pf in self.storyboard:
             pf.deactivate()
 
-    def plot(self, t):
+    def plot(self, since_start):
         """
         Manage effects
         """
         for idx, pf in enumerate(self.storyboard):
+            t = since_start + idx
             if pf.active:
                 self.looper.ensure_playing(idx)
-                pf.step_active(idx)
+                pf.white = pf.MIN_WHITE
+                pf.cycle_hue(t, 20, 1, 0.5)
+                pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
-                    pf.step_pattern_hint(idx)
+                    pf.pattern_hint(t)
             else:
                 self.looper.ensure_stopped(idx)
-                pf.step_inactive(idx)
+                pf.blackout()
+                pf.white = pf.MAX_WHITE / 3
         return True
 
 class Screensaver(manager.Story):
@@ -189,10 +171,7 @@ class Screensaver(manager.Story):
         if pattern is None:
             pattern = []
         for offset, pf in enumerate(pattern):
-            if int((t + offset) % 3) == 2:
-                pf.uv = pf.MAX_UV
-            elif int((t + offset) % 3) == 0:
-                pf.uv = pf.MIN_UV
+            pf.pattern_hint(t + offset)
         return True
 
 if __name__ == '__main__':
