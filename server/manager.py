@@ -17,9 +17,10 @@ class StoryManager(biscuit.Manager):
     WHITE_IDX = 4
     UV_IDX = 5
 
-    def __init__(self, hc, storyboard):
+    def __init__(self, hc, storyboard, looper):
         self.hc = hc
         self.storyboard = storyboard
+        self.looper = looper
         self.current_story = None
 
     def select_story(self):
@@ -44,6 +45,8 @@ class StoryManager(biscuit.Manager):
                 position = self.hc.addresses.index(addr)
                 self.storyboard[position].touch()
         self.current_story.think()
+        if self.looper is not None:
+            self.looper.think()
         for pf in self.current_story.storyboard:
             pf.untouch()
             addr = self.pf_to_addr(pf)

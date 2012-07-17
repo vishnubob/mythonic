@@ -110,6 +110,14 @@ class Looper(object):
         self.next_push = -(self.beats_per_measure / 2.0)
         self.sequencer.start_sequencer()
 
+    def ensure_playing(self, idx):
+        if not self.tracks[idx].playing:
+            self.play(idx)
+
+    def ensure_stopped(self, idx):
+        if self.tracks[idx].playing:
+            self.stop(idx)
+
     def play(self, idx):
         print "PLAY!", idx
         track = self.tracks[idx]

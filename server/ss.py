@@ -49,15 +49,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     picture_frames = []
     addresses = []
     for pf_config in config["frames"]:
-        main_tracks = []
-        if "main_tracks" in  pf_config:
-            main_tracks = map(int, pf_config["main_tracks"])
-
-        bonus_tracks = []
-        if "bonus_tracks" in  pf_config:
-            bonus_tracks = map(int, pf_config["bonus_tracks"])
-
-        picture_frames.append(SSPictureFrame(looper, main_tracks, bonus_tracks))
+        picture_frames.append(SSPictureFrame())
         addresses.append(int(pf_config["address"]) - 1)
 
     hc = HardwareChain(tty, len(addresses), .001, addresses)
@@ -68,28 +60,9 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     else:
         patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
-
     return SSManager(hc, Storyboard(picture_frames, patterns), looper)
 
-class SSPictureFrame(pictureframe.MusicalPictureFrame):
-
-    def __init__(self, looper, main_tracks=[], bonus_tracks=[]):
-        self.looper = looper
-        self.main_tracks = main_tracks
-        self.bonus_tracks = bonus_tracks
-        super(SSPictureFrame, self).__init__(looper, main_tracks + bonus_tracks)
-
-    def stop_main_tracks(self):
-        self.stop_tracks(self.main_tracks)
-
-    def play_main_tracks(self):
-        self.play_tracks(self.main_tracks)
-
-    def stop_bonus_tracks(self):
-        self.stop_tracks(self.bonus_tracks)
-
-    def play_bonus_tracks(self):
-        self.play_tracks(self.bonus_tracks)
+class SSPictureFrame(pictureframe.PictureFrame):
 
     def step_inactive(self, offset):
         """
@@ -104,7 +77,6 @@ class SSPictureFrame(pictureframe.MusicalPictureFrame):
         """
         if PRINT_STATUS: print "active: ", offset
         t = time.time() + offset
-        self.play_main_tracks()
         self.white = self.MIN_WHITE
         # Slowly cycle through hue every 20 seconds
         self.cycle_hue(t, 20, 1, 0.5)
@@ -130,7 +102,6 @@ class SSPictureFrame(pictureframe.MusicalPictureFrame):
         sys.exit()
 
     def step_chaos(self):
-        self.play_tracks()
         self.hsv = (random.random(), random.random(), random.random())
         self.uv = abs(int(random.random() * self.MAX_UV))
         #self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
@@ -144,14 +115,8 @@ class SSManager(manager.StoryManager):
 
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, 5)
-        self.instrument = Instrument(storyboard)
-        self.looper = looper
-        super(SSManager, self).__init__(hc, storyboard)
-
-    def think(self):
-        super(SSManager, self).think()
-        if self.looper is not None:
-            self.looper.think()
+        self.instrument = Instrument(storyboard, looper)
+        super(SSManager, self).__init__(hc, storyboard, looper)
 
     def select_story(self):
         # Start off with instrument mode
@@ -174,6 +139,10 @@ class Bonus(manager.Story):
 
 class Instrument(manager.Story):
 
+    def __init__(self, storyboard, looper):
+        self.looper = looper
+        super(Instrument, self).__init__(storyboard)
+
     def transition(self, t):
         for pf in self.storyboard:
             pf.deactivate()
@@ -184,10 +153,12 @@ class Instrument(manager.Story):
         """
         for idx, pf in enumerate(self.storyboard):
             if pf.active:
+                self.looper.ensure_playing(idx)
                 pf.step_active(idx)
                 if self.storyboard.in_target_pattern(pf):
                     pf.step_pattern_hint(idx)
             else:
+                self.looper.ensure_stopped(idx)
                 pf.step_inactive(idx)
         return True
 

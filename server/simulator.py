@@ -32,7 +32,7 @@ def main():
     looper = make_looper(TEST_TRACKS, MIDI_CLIENT, MIDI_PORT)
     picture_frames = []
     for i in range(FRAME_COUNT):
-        picture_frames.append(ss.SSPictureFrame(looper, [i]))
+        picture_frames.append(ss.SSPictureFrame())
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
     manager = PyGManager(hc, pictureframe.Storyboard(picture_frames, PATTERNS), looper)
