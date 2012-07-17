@@ -118,7 +118,7 @@ class SSPictureFrame(pictureframe.MusicalPictureFrame):
         t = time.time() + offset
         if int(t % 3) == 2:
             self.uv = self.MAX_UV
-        elif int(t % 3) == 0:
+        else:
             self.uv = self.MIN_UV
 
     def step_bonus(self, offset):
@@ -139,8 +139,8 @@ class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
     """
-    #SCREENSAVER_TIMEOUT = 60 * 3
-    SCREENSAVER_TIMEOUT = 5#0 * 3
+    SCREENSAVER_TIMEOUT = 60 * 3
+    #SCREENSAVER_TIMEOUT = 5#0 * 3
 
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, 5)
@@ -171,7 +171,6 @@ class Bonus(manager.Story):
     def transition(self, t):
         for pf in self.storyboard:
             pf.blackout()
-
 
 class Instrument(manager.Story):
 
@@ -208,7 +207,6 @@ class Screensaver(manager.Story):
             for pf in patterns[self.pattern_idx]:
                 pf.blackout()
             self.pattern_idx = idx
-
         return patterns[self.pattern_idx]
 
     def transition(self, t):
