@@ -107,7 +107,7 @@ try_again:
   sbi(UCSR0B, UCSZ02);
   */
   // setup even parity
-  sbi(UCSR0C, UPM01);
+  //sbi(UCSR0C, UPM01);
 }
 
 void BiscuitSerial::end()

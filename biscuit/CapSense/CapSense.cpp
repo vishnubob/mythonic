@@ -2,6 +2,7 @@
  CapacitiveSense.h v.04 - Capacitive Sensing Library for 'duino / Wiring
  Copyright (c) 2009 Paul Bagder  All right reserved.
  Version 04 by Paul Stoffregen - Arduino 1.0 compatibility, issue 146 fix
+ Copyright (c) 2012 Giles Hall - Interrupt based method.
  vim: set ts=4:
  */
 
@@ -25,11 +26,10 @@ CapSense::CapSense(uint8_t sendPin, uint8_t receivePin)
 	uint8_t sPort, rPort;
 
 	// initialize this instance's variables
-    current_value = 1;
+    current_value = 0;
 	error = 1;
-	
-	CS_Timeout_Millis = 2000;
-	CS_AutocaL_Millis = 20000;
+    sensor_mode = SENSOR_CHARGE;
+	MaxTotal = 1024;
     
 	// get pin mapping and port for send Pin - from PinMode function in core
 #ifdef NUM_DIGITAL_PINS
@@ -52,31 +52,10 @@ CapSense::CapSense(uint8_t sendPin, uint8_t receivePin)
     noInterrupts();
 	*sReg |= sBit;              // set sendpin to OUTPUT 
     interrupts();
-	leastTotal = 0x0FFFFFFFL;   // input large value for autocalibrate begin
-	lastCal = millis();         // set millis for start
 }
 
-// Public Methods //////////////////////////////////////////////////////////////
-// Functions available in Wiring sketches, this library, and other libraries
 
-void CapSense::reset_CS_AutoCal(void)
-{
-	leastTotal = 0x0FFFFFFFL;
-}
-
-void CapSense::set_CS_AutocaL_Millis(unsigned long autoCal_millis)
-{
-	CS_AutocaL_Millis = autoCal_millis;
-}
-
-void CapSense::set_CS_Timeout_Millis(unsigned long timeout_millis)
-{
-	CS_Timeout_Millis = (timeout_millis * (float)loopTimingFactor * (float)F_CPU) / 16000000;  // floats to deal with large numbers
-}
-
-// Functions only available to other functions in this library
-
-void CapSense::step_sensor(void)
+bool CapSense::step_sensor(void)
 {
     switch(sensor_mode)
     {
@@ -90,16 +69,18 @@ void CapSense::step_sensor(void)
             *rReg &= ~rBit;        // set pin to INPUT 
 
             *sOut |= sBit;         // set send Pin High
+            total = 0;
             sensor_mode = SENSOR_CHARGE_STEP;
             break;
         case SENSOR_CHARGE_STEP:
             // while receive pin is LOW AND total is positive value
-            if ( !(*rIn & rBit) && (total < CS_Timeout_Millis) ) 
+            if ( !(*rIn & rBit) && (total < MaxTotal) ) 
             {
                 total++;
-                break;
+            } else 
+            {
+                sensor_mode = SENSOR_DISCHARGE;
             }
-            sensor_mode = SENSOR_DISCHARGE;
             break;
         case SENSOR_DISCHARGE:
             // set receive pin HIGH briefly to charge up fully - because the while loop above will exit when pin is ~ 2.5V 
@@ -113,29 +94,16 @@ void CapSense::step_sensor(void)
             break;
         case SENSOR_DISCHARGE_STEP:
             // while receive pin is HIGH  AND total is less than timeout
-            if ( (*rIn & rBit) && (total < CS_Timeout_Millis) ) 
+            if ( (*rIn & rBit) && (total < MaxTotal) ) 
             {
                 total++;
-                break;
-            }
-            sensor_mode = SENSOR_CALIBRATE;
-            break;
-        case SENSOR_CALIBRATE:
-            sensor_mode = SENSOR_CHARGE;
-            // only calibrate if time is greater than CS_AutocaL_Millis and total is less than 10% of baseline
-            // this is an attempt to keep from calibrating when the sensor is seeing a "touched" signal
-            if ((millis() - lastCal > CS_AutocaL_Millis) && abs(total - leastTotal) < (int)(.10 * (float)leastTotal)) 
+            } else
             {
-                // reset for "autocalibrate"
-                leastTotal = 0x0FFFFFFFL;          
-                lastCal = millis();
+                current_value = total;
+                sensor_mode = SENSOR_CHARGE;
+                return true;
             }
-            if (total < leastTotal)
-            {
-                total = leastTotal;
-            }
-            total = total - leastTotal;
-            current_value = total;
             break;
     }
+    return false;
 }

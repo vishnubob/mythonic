@@ -21,10 +21,20 @@
 #define bittst(var,bitno) (var& (1 << (bitno)))
 
 const int _led_map[] = {9, 10, 11, 3, 5, 6};
+unsigned long touch_count = 0;
+unsigned long sensor_flip = 0;
 
 /******************************************************************************
  ** serial read / writer helper functions
  ******************************************************************************/
+
+void disable_rs485()
+{
+    // turn off receiver
+    digitalWrite(RE485_PIN, HIGH);
+    // turn off transmitter
+    digitalWrite(DE485_PIN, LOW);
+}
 
 void enable_serial_output()
 {
@@ -75,6 +85,51 @@ private:
 
 #define TOUCH_SAMPLES 100
 
+class Average
+{
+public:
+    Average() {}
+
+    Average(uint8_t sz) :
+        _sz(8), _idx(0)
+    {
+        _data = (unsigned long*)malloc(_sz * sizeof(unsigned long));
+        memset(_data, 0, _sz * sizeof(unsigned long));
+    }
+
+    void push(unsigned long val)
+    {
+        _data[_idx] = val;
+        _idx = (_idx + 1) % _sz;
+    }
+
+    unsigned long pull()
+    {
+        unsigned long sum = 0;
+        for(uint8_t sum_idx = 0; sum_idx < _sz; ++sum_idx)
+        {
+            sum += _data[sum_idx];
+        }
+        return (sum >> 3);
+    }
+
+    void set(unsigned long offset)
+    {
+        _level = pull() + offset;
+    }
+
+    bool trigger()
+    {
+        return (pull() > _level);
+    }
+
+private:
+    uint8_t _sz;
+    uint8_t _idx;
+    unsigned long* _data;
+    unsigned long _level;
+};
+
 class TouchSet
 {
 public:
@@ -84,29 +139,52 @@ public:
         _sensors[1] = CapSense(A0, A2);
         _sensors[2] = CapSense(A0, A3);
         _sensors[3] = CapSense(A0, A4);
+        _average[0] = Average(8);
+        _average[1] = Average(8);
+        _average[2] = Average(8);
+        _average[3] = Average(8);
         _sensor_idx = 0;
+        _last_cal = 0;
+        _timeout_cal = 2000;
     }
 
     void step()
     {
         CapSense *current_sensor = _sensors + _sensor_idx;
-        current_sensor->step_sensor();
-        if (current_sensor->is_init_state())
+        if (current_sensor->step_sensor())
         {
+            _average[_sensor_idx].push(current_sensor->get_current_value());
             _sensor_idx = (_sensor_idx + 1) % TOUCH_COUNT;
+            sensor_flip++;
         }
     }
 
-    unsigned long get_sensor_value(uint8_t sensor_idx)
+    bool trigger()
     {
-        return _sensors[sensor_idx].get_current_value();
+        bool trigger_flag = false;
+        for(int x = 0; x < TOUCH_COUNT; ++x)
+        {
+            trigger_flag |= _average[x].trigger();
+        }
+
+        if ((_last_cal - millis()) > _timeout_cal)
+        {
+            for(int x = 0; x < TOUCH_COUNT; ++x)
+            {
+                _average[x].set(20);
+            }
+            _last_cal = millis();
+        }
+        return trigger_flag;
     }
 
 private:
     CapSense _sensors[TOUCH_COUNT];
+    Average _average[TOUCH_COUNT];
+    unsigned long _last_cal;
+    unsigned long _timeout_cal;
     volatile uint8_t _sensor_idx;
 };
-
 
 /******************************************************************************
  ** Globals
@@ -126,7 +204,7 @@ uint8_t         light_buffer[LIGHT_MSG];
 void setup()
 {
     // pins
-    Serial.begin(1000000);
+    Serial.begin(9600);
     pinMode(GRN, OUTPUT);
     pinMode(RED, OUTPUT);
     pinMode(DE485_PIN, OUTPUT);
@@ -139,21 +217,21 @@ void setup()
         leds[ch].set(0);
     }
     
+    // board_addr = BOARD_ADDR;
     board_addr = BOARD_ADDR;
     /* blink out our board address */
-    for (uint8_t addr = 0; addr <= board_addr; ++addr)
-    {
-        digitalWrite(GRN, HIGH);
-        delay(30);
-        digitalWrite(GRN, LOW);
-        delay(30);
-    }
+    digitalWrite(GRN, HIGH);
+    delay(300);
+    digitalWrite(GRN, LOW);
+    delay(300);
+    digitalWrite(GRN, HIGH);
         
     memset(light_buffer, 0, LIGHT_MSG * sizeof(char));
-    digitalWrite(GRN, HIGH);
     // enable timer2 overflow interrupt
     // for touch sensors
     sbi(TIMSK2, TOIE2);
+    enable_serial_output();
+    Serial.println("hey baby");
 }
 
 /******************************************************************************
@@ -174,7 +252,15 @@ uint8_t serial_state = 0;
 uint8_t serial_command = 0;
 uint8_t command_address = 0;
 
-void loop(void)
+void loop()
+{
+    if (touchset.trigger())
+    {
+        Serial.println("TOUCH");
+    }
+}
+
+void _loop(void)
 {
     if (!Serial.available()) 
         return;
@@ -183,7 +269,8 @@ void loop(void)
     char ch = lowhi & 0xFF;
     char flags = (lowhi >> 8) & 0xFF;
 
-    if (flags & PARITY_ERROR)
+    //if (flags & PARITY_ERROR)
+    if (flags & 0)
     {
         serial_state = WAIT_FOR_COMMAND_STATE;
         digitalWrite(RED, HIGH);
@@ -265,4 +352,5 @@ void loop(void)
 SIGNAL(TIMER2_OVF_vect)
 {
     touchset.step();
+    touch_count++;
 }

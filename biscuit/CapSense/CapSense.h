@@ -15,7 +15,7 @@
 #include "WProgram.h"
 #endif
 
-enum SensorState { SENSOR_CHARGE, SENSOR_CHARGE_STEP, SENSOR_DISCHARGE, SENSOR_DISCHARGE_STEP, SENSOR_CALIBRATE };
+enum SensorState { SENSOR_CHARGE, SENSOR_CHARGE_STEP, SENSOR_DISCHARGE, SENSOR_DISCHARGE_STEP };
 
 // library interface description
 class CapSense
@@ -25,24 +25,18 @@ class CapSense
   // methods
 	CapSense();
 	CapSense(uint8_t sendPin, uint8_t receivePin);
-	void set_CS_Timeout_Millis(unsigned long timeout_millis);
-	void reset_CS_AutoCal();
-	void set_CS_AutocaL_Millis(unsigned long autoCal_millis);
+	void set_timeout(unsigned long timeout);
 
-    void step_sensor(void);
-    bool is_init_state(void) { return sensor_mode == SENSOR_CHARGE; }
+    bool step_sensor(void);
     unsigned long get_current_value(void) { return current_value; }
+	volatile SensorState sensor_mode;
+	volatile unsigned long  total;
+	volatile unsigned long  current_value;
   // library-accessible "private" interface
   private:
   // variables
 	int error;
-	unsigned long  leastTotal;
-	unsigned int   loopTimingFactor;
-	unsigned long  CS_Timeout_Millis;
-	unsigned long  CS_AutocaL_Millis;
-	unsigned long  lastCal;
-	unsigned long  total;
-	unsigned long  current_value;
+	unsigned long  MaxTotal;
 	uint8_t sBit;   // send pin's ports and bitmask
 	volatile uint8_t *sReg;
 	volatile uint8_t *sOut;
@@ -50,7 +44,6 @@ class CapSense
 	volatile uint8_t *rReg;
 	volatile uint8_t *rIn;
 	volatile uint8_t *rOut;
-	volatile SensorState sensor_mode;
 };
 
 #endif
