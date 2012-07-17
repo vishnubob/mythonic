@@ -71,19 +71,6 @@ class SSPictureFrame(pictureframe.PictureFrame):
         else:
             self.uv = self.MIN_UV
 
-    def step_bonus(self, offset):
-        """
-        Effects for when this frame is part of a completed pattern
-        """
-        if PRINT_STATUS: print "bonus: ", offset
-        self.step_chaos()
-        sys.exit()
-
-    def step_chaos(self):
-        self.hsv = (random.random(), random.random(), random.random())
-        self.uv = abs(int(random.random() * self.MAX_UV))
-        #self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
-
 class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
