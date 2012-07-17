@@ -96,12 +96,6 @@ class SSManager(manager.StoryManager):
         if not self.current_story.finished:
             return self.current_story
 
-class Bonus(manager.Story):
-
-    def transition(self, t):
-        for pf in self.storyboard:
-            pf.blackout()
-
 class Instrument(manager.Story):
 
     def __init__(self, storyboard, looper):
@@ -118,16 +112,15 @@ class Instrument(manager.Story):
         """
         for idx, pf in enumerate(self.storyboard):
             t = since_start + idx
+            pf.blackout()
             if pf.active:
                 self.looper.ensure_playing(idx)
-                pf.white = pf.MIN_WHITE
                 pf.cycle_hue(t, 20, 1, 0.5)
                 pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
                     pf.pattern_hint(t)
             else:
                 self.looper.ensure_stopped(idx)
-                pf.blackout()
                 pf.white = pf.MAX_WHITE / 3
         return True
 
