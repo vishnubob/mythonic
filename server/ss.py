@@ -3,9 +3,7 @@
 import math
 import random
 import serial
-import signal
 import sys
-import time
 
 import yaml
 
@@ -49,15 +47,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     picture_frames = []
     addresses = []
     for pf_config in config["frames"]:
-        main_tracks = []
-        if "main_tracks" in  pf_config:
-            main_tracks = map(int, pf_config["main_tracks"])
-
-        bonus_tracks = []
-        if "bonus_tracks" in  pf_config:
-            bonus_tracks = map(int, pf_config["bonus_tracks"])
-
-        picture_frames.append(SSPictureFrame(looper, main_tracks, bonus_tracks))
+        picture_frames.append(SSPictureFrame())
         addresses.append(int(pf_config["address"]) - 1)
 
     hc = HardwareChain(tty, len(addresses), .001, addresses)
@@ -68,90 +58,30 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     else:
         patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
-
     return SSManager(hc, Storyboard(picture_frames, patterns), looper)
 
-class SSPictureFrame(pictureframe.MusicalPictureFrame):
+class SSPictureFrame(pictureframe.PictureFrame):
 
-    def __init__(self, looper, main_tracks=[], bonus_tracks=[]):
-        self.looper = looper
-        self.main_tracks = main_tracks
-        self.bonus_tracks = bonus_tracks
-        super(SSPictureFrame, self).__init__(looper, main_tracks + bonus_tracks)
-
-    def stop_main_tracks(self):
-        self.stop_tracks(self.main_tracks)
-
-    def play_main_tracks(self):
-        self.play_tracks(self.main_tracks)
-
-    def stop_bonus_tracks(self):
-        self.stop_tracks(self.bonus_tracks)
-
-    def play_bonus_tracks(self):
-        self.play_tracks(self.bonus_tracks)
-
-    def step_inactive(self, offset):
-        """
-        Effects for when this frame is not active and not screensavering
-        """
-        if PRINT_STATUS: print "inactive: ", offset
-        self.white = self.MAX_WHITE / 3
-
-    def step_active(self, offset):
-        """
-        Effects for after a picture frame has been activated.
-        """
-        if PRINT_STATUS: print "active: ", offset
-        t = time.time() + offset
-        self.play_main_tracks()
-        self.white = self.MIN_WHITE
-        # Slowly cycle through hue every 20 seconds
-        self.cycle_hue(t, 20, 1, 0.5)
-        self.uv = int(mmath.sin_abs(t/3, True) * self.MAX_UV)
-
-    def step_pattern_hint(self, offset):
+    def pattern_hint(self, t):
         """
         Hint that this selectd picture frame is part of a pattern.
         """
-        if PRINT_STATUS: print "active_hint: ", offset
-        t = time.time() + offset
-        if int(t % 3) == 2:
+        if int(t % 2) == 1:
             self.uv = self.MAX_UV
-        elif int(t % 3) == 0:
+        else:
             self.uv = self.MIN_UV
-
-    def step_bonus(self, offset):
-        """
-        Effects for when this frame is part of a completed pattern
-        """
-        if PRINT_STATUS: print "bonus: ", offset
-        self.step_chaos()
-        sys.exit()
-
-    def step_chaos(self):
-        self.play_tracks()
-        self.hsv = (random.random(), random.random(), random.random())
-        self.uv = abs(int(random.random() * self.MAX_UV))
-        #self.white = abs(int(math.sin(t) * self.MAX_WHITE / 10))
 
 class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
     """
-    #SCREENSAVER_TIMEOUT = 60 * 3
-    SCREENSAVER_TIMEOUT = 5#0 * 3
+    SCREENSAVER_TIMEOUT = 60 * 3
+    #SCREENSAVER_TIMEOUT = 5#0 * 3
 
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, 5)
-        self.instrument = Instrument(storyboard)
-        self.looper = looper
-        super(SSManager, self).__init__(hc, storyboard)
-
-    def think(self):
-        super(SSManager, self).think()
-        if self.looper is not None:
-            self.looper.think()
+        self.instrument = Instrument(storyboard, looper)
+        super(SSManager, self).__init__(hc, storyboard, looper)
 
     def select_story(self):
         # Start off with instrument mode
@@ -166,30 +96,32 @@ class SSManager(manager.StoryManager):
         if not self.current_story.finished:
             return self.current_story
 
-class Bonus(manager.Story):
-
-    def transition(self, t):
-        for pf in self.storyboard:
-            pf.blackout()
-
-
 class Instrument(manager.Story):
+
+    def __init__(self, storyboard, looper):
+        self.looper = looper
+        super(Instrument, self).__init__(storyboard)
 
     def transition(self, t):
         for pf in self.storyboard:
             pf.deactivate()
 
-    def plot(self, t):
+    def plot(self, since_start):
         """
         Manage effects
         """
         for idx, pf in enumerate(self.storyboard):
+            t = since_start + idx
+            pf.blackout()
             if pf.active:
-                pf.step_active(idx)
+                self.looper.ensure_playing(idx)
+                pf.cycle_hue(t, 20, 1, 0.5)
+                pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
-                    pf.step_pattern_hint(idx)
+                    pf.pattern_hint(t)
             else:
-                pf.step_inactive(idx)
+                self.looper.ensure_stopped(idx)
+                pf.white = pf.MAX_WHITE / 3
         return True
 
 class Screensaver(manager.Story):
@@ -208,7 +140,6 @@ class Screensaver(manager.Story):
             for pf in patterns[self.pattern_idx]:
                 pf.blackout()
             self.pattern_idx = idx
-
         return patterns[self.pattern_idx]
 
     def transition(self, t):
@@ -220,10 +151,7 @@ class Screensaver(manager.Story):
         if pattern is None:
             pattern = []
         for offset, pf in enumerate(pattern):
-            if int((t + offset) % 3) == 2:
-                pf.uv = pf.MAX_UV
-            elif int((t + offset) % 3) == 0:
-                pf.uv = pf.MIN_UV
+            pf.pattern_hint(t + offset)
         return True
 
 if __name__ == '__main__':
