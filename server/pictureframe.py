@@ -47,7 +47,7 @@ class Storyboard(list):
           2. the  start of pattern must be an active frame
         """
         for pattern in self.patterns:
-            if self.active_frames <= pattern:
+            if set(self.active_frames).issubset(set(pattern)):
                 return pattern
         return None
 
