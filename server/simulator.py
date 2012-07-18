@@ -7,6 +7,7 @@ import pygame
 
 import biscuit
 import ss
+from ss import *
 import pictureframe
 
 from music import make_looper
@@ -22,20 +23,24 @@ TEST_TRACKS = [
     "../music_raw/drum_51.mid",
     "../music_raw/drum_77.mid"
 ]
-PATTERNS = [[0, 1], [5, 6], [4, 6]]
-FRAME_COUNT = len(TEST_TRACKS)
+PATTERNS = [[0, 1]]#, [5, 6], [4, 6]]
 BOX_HEIGHT = 75
 BOX_WIDTH = 100
+PICTURE_FRAMES = [
+    RedSitsAlone(),
+    RedSewsBat(),
+    RedFinishesBat(),
+    RedHugsBat()
+]
+FRAME_COUNT = len(PICTURE_FRAMES)
 SCREEN = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT))
 
 def main():
     looper = make_looper(TEST_TRACKS, MIDI_CLIENT, MIDI_PORT)
     picture_frames = []
-    for i in range(FRAME_COUNT):
-        picture_frames.append(ss.SSPictureFrame())
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
-    manager = PyGManager(hc, pictureframe.Storyboard(picture_frames, PATTERNS), looper)
+    manager = PyGManager(hc, ss.SonicStoryboard(PICTURE_FRAMES, PATTERNS), looper)
     manager.run()
 
 class PyGHardwareChain(biscuit.HardwareChain):

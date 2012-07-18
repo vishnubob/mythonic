@@ -57,18 +57,7 @@ def load_manager(tty_dev, config, midi_client, midi_port):
     else:
         patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
 
-    return SSManager(hc, Storyboard(picture_frames, patterns), looper)
-
-class SSPictureFrame(pictureframe.PictureFrame):
-
-    def pattern_hint(self, t):
-        """
-        Hint that this selectd picture frame is part of a pattern.
-        """
-        if int(t % 2) == 1:
-            self.uv = self.MAX_UV
-        else:
-            self.uv = self.MIN_UV
+    return SSManager(hc, SonicStoryboard(picture_frames, patterns), looper)
 
 class SSManager(manager.StoryManager):
     """
@@ -78,7 +67,7 @@ class SSManager(manager.StoryManager):
     SCREENSAVER_TIMEOUT = 5#0 * 3
 
     def __init__(self, hc, storyboard, looper=None):
-        self.screensaver = Screensaver(storyboard, 5)
+        self.screensaver = Screensaver(storyboard, period_length=5)
         self.instrument = Instrument(storyboard, looper)
         self.bonus = PoC(storyboard, looper)
         super(SSManager, self).__init__(hc, storyboard, looper)
@@ -135,16 +124,27 @@ class PoC(manager.MusicalStory):
             if pf == focus:
                 continue
             pf.blackout()
-            #focus.mood_f(pf)
-            pf.green = pf.MAX_GREEN
+            focus.mood(pf, t)
         focus.blackout()
         focus.white = focus.MAX_WHITE
         return t < self.STORY_LENGTH
 
+class SonicStoryboard(pictureframe.Storyboard):
+    pass
+    # Turn this into a field of
+#    moods = [
+#        lambda pf, t: pf.boredom(t),
+#        lambda pf, t: pf.craftsmanship(t),
+#        lambda pf, t: pf.accomplishment(t),
+#        lambda pf, t: pf.love(t),
+#        lambda pf, t: pf.fun(t),
+#        lambda pf, t: pf.contentment(t),
+#    ]
+
 class Screensaver(manager.Story):
 
     def __init__(self, storyboard, period_length):
-        self.period_length = 6
+        self.period_length = period_length
         self.pattern_idx = 0
         super(Screensaver, self).__init__(storyboard)
 
@@ -166,6 +166,81 @@ class Screensaver(manager.Story):
         for offset, pf in enumerate(pattern):
             pf.pattern_hint(t + offset)
         return True
+
+class SSPictureFrame(pictureframe.PictureFrame):
+
+    def pattern_hint(self, t):
+        """
+        Hint that this selectd picture frame is part of a pattern.
+        """
+        if int(t % 2) == 1:
+            self.uv = self.MAX_UV
+        else:
+            self.uv = self.MIN_UV
+
+class RedSitsAlone(SSPictureFrame):
+    """
+    Red sitting alone bored
+    """
+    @staticmethod
+    def mood(pf, t):
+        pf.blue = pf.MAX_BLUE
+
+class RedSewsBat(SSPictureFrame):
+    """
+    Red sewing, making the bat
+    """
+    @staticmethod
+    def mood(pf, t):
+        pf.red = 255
+        pf.green = 255
+        pf.blue = 0
+
+class RedFinishesBat(SSPictureFrame):
+    """
+    Red finishes creation, sense of accomplishment
+    """
+    @staticmethod
+    def mood(pf, t):
+        pf.green = pf.MAX_GREEN
+
+class RedHugsBat(SSPictureFrame):
+    """
+    Love, hugging creation
+    """
+    @staticmethod
+    def mood(pf, t):
+        pf.red = pf.MAX_RED
+ 
+class RedPlaysWithBat(SSPictureFrame):
+    pass
+
+class RedHangsBat(SSPictureFrame):
+    pass
+
+class BatFliesAway(SSPictureFrame):
+    pass
+
+class BatTakesOff(SSPictureFrame):
+    pass
+
+class BatEatsStars(SSPictureFrame):
+    pass
+
+class BatTripsBalls(SSPictureFrame):
+    pass
+
+class RedSittingAlone(SSPictureFrame):
+    pass
+
+class RedIsSad(SSPictureFrame):
+    pass
+
+class PlanetTapsShoulder(SSPictureFrame):
+    pass
+
+class PlanetFriendship(SSPictureFrame):
+    pass
 
 if __name__ == '__main__':
     main()
