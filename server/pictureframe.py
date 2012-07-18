@@ -19,7 +19,7 @@ class Storyboard(list):
 
     @property
     def touched_frames(self):
-        return filter(lambda pf: pf.touched, self)
+        return [pf for pf in self if pf.touched]
 
     @property
     def touched(self):
@@ -27,7 +27,7 @@ class Storyboard(list):
 
     @property
     def active_frames(self):
-        return filter(lambda pf: pf.active, self)
+        return [pf for pf in self if pf.active]
 
     @property
     def untouched_for(self):
