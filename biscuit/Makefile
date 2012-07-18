@@ -42,9 +42,10 @@ arduino/wiring_digital.c \
 arduino/wiring_pulse.c \
 arduino/wiring_shift.c \
 arduino/EEPROM.c \
+arduino/HardwareSerial.cpp \
 CapSense/CapSense.cpp \
-arduino/BiscuitSerial.cpp \
 biscuit.cpp
+
 
 # additional includes (e.g. -I/path/to/mydir)
 INC=-Iarduino -ICapSense
@@ -187,12 +188,12 @@ stats: $(TRG)
 hex: $(HEXTRG)
 
 upload: hex
-	#./arduino_reset.py
+	./arduino_reset.py /dev/tty.usbmodem621
 	$(AVRDUDE) -c arduino   			\
-	-p m328p  -P /dev/ttyUSB0 -D 	\
+	-p m328p  -P /dev/tty.usbmodem621 -D 	\
 	-F \
 	-i 1 \
-	-b 57600	\
+	-b 115200	\
 	-U flash:w:$(HEXROMTRG)
 
 
