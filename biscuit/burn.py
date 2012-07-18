@@ -8,6 +8,26 @@ FORMAT = "BH"
 EEPROM_SIZE = 1024
 FUSES = ["-U lfuse:w:0xff:m", "-U hfuse:w:0xd9:m", "-U efuse:w:0x07:m"]
 
+BOARD_TMPL = """#ifndef __BOARD_ADDR_H__
+#define __BOARD_ADDR_H__
+
+#define BOARD_ADDR %s
+
+#endif // __BOARD_ADDR_H__
+"""
+
+def write_header(board_addr):
+    header = BOARD_TMPL % board_addr
+    f = open("board_address.h", 'w')
+    f.write(header)
+    f.close()
+
+def refresh_build():
+    build_cmd = "make biscuit.hex"
+    print build_cmd
+    ret = os.system(build_cmd)
+    assert(ret == 0)
+
 def write_eeprom(board_addr):
     threshold = 500
     image = struct.pack(FORMAT, board_addr, threshold)
@@ -46,5 +66,7 @@ if __name__ == "__main__":
     for board_addr in range(low, high):
         msg = "Prepare board %s and hit enter." % (board_addr + 1)
         raw_input(msg)
-        write_eeprom(board_addr)
+        #write_eeprom(board_addr)
+        write_header(board_addr)
+        refresh_build()
         write_board(port, board_addr)
