@@ -38,7 +38,6 @@ def main():
 
 def load_manager(tty_dev, config, midi_client, midi_port):
     tty = serial.Serial(tty_dev, baudrate=1000000, parity=serial.PARITY_EVEN)
-
     midi_paths = config["midi"]["tracks"]
     looper = None
     if midi_paths is not None and len(midi_paths) > 0:
@@ -75,35 +74,37 @@ class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
     """
-    SCREENSAVER_TIMEOUT = 60 * 3
-    #SCREENSAVER_TIMEOUT = 5#0 * 3
+    #SCREENSAVER_TIMEOUT = 60 * 3
+    SCREENSAVER_TIMEOUT = 5#0 * 3
 
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, 5)
         self.instrument = Instrument(storyboard, looper)
+        self.bonus = PoC(storyboard, looper)
         super(SSManager, self).__init__(hc, storyboard, looper)
 
     def select_story(self):
-        # Start off with instrument mode
         if self.current_story is None:
             return self.instrument
-        #if self.storyboard.pattern_complete:
-        if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
-            return self.screensaver
-        # Come out of screensaver mode into instrument mode
-        elif isinstance(self.current_story, Screensaver):
+        if isinstance(self.current_story, Instrument):
+             if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
+                return self.screensaver
+             elif self.storyboard.pattern_complete:
+                return self.bonus
+        # Come out of screensaver mode into instrument mode if touched
+        if isinstance(self.current_story, Screensaver) and self.storyboard.touched:
             return self.instrument
+        # Patiently wait for whatever is running to finish
         if not self.current_story.finished:
             return self.current_story
+        # Default to Instrument
+        return self.instrument
 
-class Instrument(manager.Story):
-
-    def __init__(self, storyboard, looper):
-        self.looper = looper
-        super(Instrument, self).__init__(storyboard)
+class Instrument(manager.MusicalStory):
 
     def transition(self, t):
         for pf in self.storyboard:
+            pf.blackout()
             pf.deactivate()
 
     def plot(self, since_start):
@@ -114,15 +115,31 @@ class Instrument(manager.Story):
             t = since_start + idx
             pf.blackout()
             if pf.active:
-                self.looper.ensure_playing(idx)
+                self.play(idx)
                 pf.cycle_hue(t, 20, 1, 0.5)
                 pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
                     pf.pattern_hint(t)
             else:
-                self.looper.ensure_stopped(idx)
+                self.play(idx)
                 pf.white = pf.MAX_WHITE / 3
         return True
+
+class PoC(manager.MusicalStory):
+    STORY_LENGTH = 10
+
+    def plot(self, t):
+        focus_idx = int(mmath.segment(t, self.STORY_LENGTH, 0, len(self.storyboard)))
+        focus = self.storyboard[focus_idx]
+        for pf in self.storyboard:
+            if pf == focus:
+                continue
+            pf.blackout()
+            #focus.mood_f(pf)
+            pf.green = pf.MAX_GREEN
+        focus.blackout()
+        focus.white = focus.MAX_WHITE
+        return t < self.STORY_LENGTH
 
 class Screensaver(manager.Story):
 
@@ -141,10 +158,6 @@ class Screensaver(manager.Story):
                 pf.blackout()
             self.pattern_idx = idx
         return patterns[self.pattern_idx]
-
-    def transition(self, t):
-        work_left = [pf.fadeout() for pf in self.storyboard]
-        return reduce(lambda a, b: a or b, work_left)
 
     def plot(self, t):
         pattern = self.hinted_pattern(t)

@@ -22,6 +22,10 @@ class Storyboard(list):
         return filter(lambda pf: pf.touched, self)
 
     @property
+    def touched(self):
+        return len(self.touched_frames) > 0
+
+    @property
     def active_frames(self):
         return filter(lambda pf: pf.active, self)
 
@@ -37,7 +41,9 @@ class Storyboard(list):
 
     @property
     def pattern_complete(self):
-        return self.active_frames == self.target_pattern
+        if self.target_pattern is None:
+            return False
+        return set(self.active_frames) == set(self.target_pattern)
 
     @property
     def target_pattern(self):
@@ -135,6 +141,7 @@ class PictureFrame(object):
         green = max(self.MIN_GREEN, self.green / float(self.MAX_GREEN))
         blue = max(self.MIN_BLUE, self.blue / float(self.MAX_BLUE))
         return colorsys.rgb_to_hsv(red, green, blue)
+
     @hsv.setter
     def hsv(self, hsv):
         rgb = colorsys.hsv_to_rgb(hsv[0], hsv[1], hsv[2])
@@ -142,11 +149,17 @@ class PictureFrame(object):
         self.green = int(rgb[1] * self.MAX_GREEN)
         self.blue = int(rgb[2] * self.MAX_BLUE)
 
+    @property
+    def brightness(self):
+        return self.hsv[2]
+
+    @brightness.setter
+    def brightness(self, brightness):
+        self.hsv = (self.hsv[0], self.hsv[1], brightness)
+
     def blackout(self):
-        self.red = self.MIN_RED
-        self.green = self.MIN_GREEN
-        self.blue = self.MIN_BLUE
-        self.uv = self.MIN_UV
+        self.brightness = 0
+        self.uv = 0
         self.white = self.MIN_WHITE
 
     def fadeout(self):

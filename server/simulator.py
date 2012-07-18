@@ -63,7 +63,7 @@ class PyGHardwareChain(biscuit.HardwareChain):
         # Update!
         pygame.display.update()
 
-    # I copy&paste refresh, except for touch stuff
+    # I coppied original refresh function, except for touch stuff
     def refresh(self):
         light_data = self.light_frames[self.frame_idx]
         light_data.go()
