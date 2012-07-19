@@ -176,27 +176,3 @@ class PictureFrame(object):
             self.white > self.MIN_WHITE,
         ]
         return reduce(lambda a, b: a or b, work_left)
-
-class MusicalPictureFrame(PictureFrame):
-    def __init__(self, looper, tracks):
-        self.tracks = tracks
-        super(MusicalPictureFrame, self).__init__()
-
-    def deactivate(self):
-        self.stop_tracks()
-        super(MusicalPictureFrame, self).deactivate()
-
-    def stop_tracks(self, only_these=None):
-        if only_these is None:
-            only_these = self.tracks
-        for track in only_these:
-            if self.looper.tracks[track].playing:
-                self.looper.stop(track)
-
-    def play_tracks(self, only_these=None):
-        if only_these is None:
-            only_these = self.tracks
-        for track in only_these:
-            if self.looper.tracks[track].playing:
-                continue
-            self.looper.play(track)
