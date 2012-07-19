@@ -12,24 +12,13 @@ import pictureframe
 
 from music import make_looper
 
-MIDI_CLIENT = 128
-MIDI_PORT = 0
-TEST_TRACKS = [
-    "../music_raw/drum_36.mid",
-    "../music_raw/drum_37.mid",
-    "../music_raw/drum_39.mid",
-    "../music_raw/drum_42.mid",
-    "../music_raw/drum_49.mid",
-    "../music_raw/drum_51.mid",
-    "../music_raw/drum_77.mid"
-]
-BOX_HEIGHT = 75
+BOX_HEIGHT = 50
 BOX_WIDTH = 100
 FRAME_COUNT = len(PICTURE_FRAMES)
 SCREEN = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT))
 
 def main():
-    looper = make_looper(TEST_TRACKS, MIDI_CLIENT, MIDI_PORT)
+    looper = make_looper(MIDI_TRACKS, MIDI_CLIENT, MIDI_PORT)
     picture_frames = []
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
