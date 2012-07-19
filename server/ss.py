@@ -16,75 +16,64 @@ import manager
 import mmath
 import pictureframe
 
-PRINT_STATUS = False
+
+MIDI_CLIENT = 128
+MIDI_PORT = 0
+
+MIDI_TRACKS = [
+    "../music_raw/drum_36.mid",
+    "../music_raw/drum_37.mid",
+    "../music_raw/drum_39.mid",
+    "../music_raw/drum_42.mid",
+    "../music_raw/drum_49.mid",
+    "../music_raw/drum_51.mid",
+    "../music_raw/drum_77.mid"
+]
+
+ROUTING = {
+    "/dev/ttyUSB0": [0, 1, 2],
+    "/dev/ttyUSB1": []
+}
 
 def main():
-    if len(sys.argv) not in [3, 5]:
-        script_name = sys.argv[0]
-        print "Usage:   {0} <config> <tty> [<midi client> <midi port>]".format(sys.argv[0])
-        print "Example: {0} ss.yaml /dev/ttyUSB0 128 0".format(sys.argv[0])
-        exit(2)
-
-    config_file = sys.argv[1]
-    tty_dev = sys.argv[2]
-    client = 128 if len(sys.argv) < 4 else int(sys.argv[3])
-    port = 0 if len(sys.argv) < 5 else int(sys.argv[4])
-
-    config_stream = open(config_file)
-    manager = load_manager(tty_dev, yaml.load(config_stream), client, port)
-    config_stream.close()
-
+    looper = make_looper(MIDI_TRACKS, MIDI_CLIENT, MIDI_PORT)
+    addresses = []
+    serial_ports = []
+    picture_frames = []
+    for tty_dev in ROUTING:
+        tty = serial.Serial(tty_dev, baudrate=1000000)
+        for address in ROUTING[tty_dev]:
+            addresses.append(address)
+            serial_ports.append(tty)
+        picture_frame = [pf for pf in PICTURE_FRAMES if pf.address == address][0]
+        picture_frames.append(picture_frame)
+    hc = HardwareChain(serial_ports, addresses)
+    manager = SSManager(hc, SonicStoryboard(picture_frames), looper)
     manager.run()
 
-def load_manager(tty_dev, config, midi_client, midi_port):
-    tty = serial.Serial(tty_dev, baudrate=1000000, parity=serial.PARITY_EVEN)
-    midi_paths = config["midi"]["tracks"]
-    looper = None
-    if midi_paths is not None and len(midi_paths) > 0:
-        looper = make_looper(midi_paths, midi_client, midi_port)
-
-    picture_frames = []
-    addresses = []
-    for pf_config in config["frames"]:
-        picture_frames.append(SSPictureFrame())
-        addresses.append(int(pf_config["address"]) - 1)
-
-    hc = HardwareChain(tty, len(addresses), .001, addresses)
-
-    # Patterns of picture frames.
-    if "patterns" not in config or config["patterns"] is None:
-        patterns = []
-    else:
-        patterns = [[picture_frames[i] for i in p] for p in config["patterns"]]
-
-    return SSManager(hc, SonicStoryboard(picture_frames, patterns), looper)
-
 class Pattern(list):
-
     def __init__(self, picture_frames, triggered_story):
         self.triggered_story = triggered_story
         super(Pattern, self).__init__(picture_frames)
-        
+
 class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
     """
-    #SCREENSAVER_TIMEOUT = 60 * 3
-    SCREENSAVER_TIMEOUT = 5#0 * 3
+    SCREENSAVER_TIMEOUT = 60 * 3
 
-    # TODO storyboard -> picture_frames
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, period_length=5)
         self.instrument = Instrument(storyboard, looper)
-        self.bat_adventure = BatAdventure(storyboard, looper, 1)
-        patterns = []
-        for narative in [self.bat_adventure]:
+        time_per_frame = 1
+        naratives = [
+            BatAdventure(storyboard, looper, time_per_frame),
+            TreeArt(storyboard, looper, time_per_frame),
+            FriendshipPlanet(storyboard, looper, time_per_frame)
+        ]
+        for narative in naratives:
             activators = [pf for idx, pf in enumerate(narative.foci) if idx % 2 != 0]
-            patterns.append(Pattern(activators, narative))
-            print activators
-        # TODO: create a new storyboard instead
-        storyboard.patterns = patterns
-
+            storyboard.patterns.append(Pattern(activators, narative))
         super(SSManager, self).__init__(hc, storyboard, looper)
 
     def select_story(self):
@@ -93,7 +82,7 @@ class SSManager(manager.StoryManager):
         if isinstance(self.current_story, Instrument):
              if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
                 return self.screensaver
-             elif self.storyboard.pattern_complete:
+             if self.storyboard.pattern_complete:
                 return self.storyboard.target_pattern.triggered_story
         # Come out of screensaver mode into instrument mode if touched
         if isinstance(self.current_story, Screensaver) and self.storyboard.touched:
@@ -121,13 +110,15 @@ class Instrument(manager.MusicalStory):
             t = since_start + idx
             pf.blackout()
             if pf.active:
-                self.play(idx)
+                if idx < len(self.looper.tracks):
+                    self.play(idx)
                 pf.cycle_hue(t, 20, 1, 0.5)
                 pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
                     pf.pattern_hint(t)
             else:
-                self.play(idx)
+                if idx < len(self.looper.tracks):
+                    self.stop(idx)
                 pf.white = pf.MAX_WHITE / 3
         return True
 
@@ -163,24 +154,9 @@ class TreeArt(Narative):
             RedHangsBat
         ]
         foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
-        super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
+        super(TreeArt, self).__init__(storyboard, looper, foci, time_per_frame)
 
-class BatAdventure(Narative):
-
-    def __init__(self, storyboard, looper, time_per_frame=10):
-        foci_classes = [
-            RedSitsAlone,
-            RedSewsBat,
-            RedFinishesBat,
-            BatFliesAway,
-            BatIsSad,
-            PlanetTapsShoulder,
-            PlanetHangout
-        ]
-        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
-        super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
-
-class BatAdventure(Narative):
+class FriendshipPlanet(Narative):
 
     def __init__(self, storyboard, looper, time_per_frame=10):
         foci_classes = [
@@ -191,6 +167,21 @@ class BatAdventure(Narative):
             RedIsSad,
             PlanetTapsShoulder,
             PlanetHangout
+        ]
+        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
+        super(FriendshipPlanet, self).__init__(storyboard, looper, foci, time_per_frame)
+
+class BatAdventure(Narative):
+
+    def __init__(self, storyboard, looper, time_per_frame=10):
+        foci_classes = [
+            RedSitsAlone,
+            RedSewsBat,
+            RedFinishesBat,
+            BatFliesAway,
+            BatTakesOff,
+            BatEatsStars,
+            BatTripsBalls
         ]
         foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
         super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
@@ -235,6 +226,10 @@ class Screensaver(manager.Story):
         return True
 
 class SSPictureFrame(pictureframe.PictureFrame):
+
+    def __init__(self, address=None):
+        self.address = address
+        super(SSPictureFrame, self).__init__()
 
     def pattern_hint(self, t):
         """
@@ -374,6 +369,22 @@ class PlanetHangout(SSPictureFrame):
         pf.red = 255
         pf.green = 192
         pf.blue = 203
+
+PICTURE_FRAMES = [
+    RedSitsAlone(),
+    RedSewsBat(),
+    RedFinishesBat(),
+    RedHugsBat(),
+    RedPlaysWithBat(),
+    RedHangsBat(),
+    BatFliesAway(),
+    BatTakesOff(),
+    BatEatsStars(),
+    BatTripsBalls(),
+    RedIsSad(),
+    PlanetTapsShoulder(),
+    PlanetHangout()
+]
 
 if __name__ == '__main__':
     main()
