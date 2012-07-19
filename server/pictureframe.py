@@ -8,11 +8,11 @@ class Storyboard(list):
     A container for picture frames and patterns with convenience
     methods for inspecting both.
     """
-    def __init__(self, picture_frames, patterns):
+    def __init__(self, picture_frames, patterns=[]):
         for pattern in patterns:
-            for idx, pf_or_idx in enumerate(pattern):
-                if not isinstance(pf_or_idx, PictureFrame):
-                    pattern[idx] = picture_frames[pf_or_idx]
+            for pf in pattern:
+                if pf not in picture_frames:
+                    raise ValueError("Picture frames in arg 'patterns' must exist in arg 'picture_frames'")
         self.patterns = patterns
         self.initialized_at = time.time()
         super(Storyboard, self).__init__(picture_frames)
@@ -162,7 +162,7 @@ class PictureFrame(object):
         self.uv = 0
         self.white = self.MIN_WHITE
 
-    def fadeout(self):
+    def fadeout(self):#, t, span, original_values):
         self.red = max(self.red - 1, self.MIN_RED)
         self.green = max(self.green - 1, self.MIN_GREEN)
         self.blue = max(self.blue - 1, self.MIN_BLUE)
