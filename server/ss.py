@@ -59,6 +59,12 @@ def load_manager(tty_dev, config, midi_client, midi_port):
 
     return SSManager(hc, SonicStoryboard(picture_frames, patterns), looper)
 
+class Pattern(list):
+
+    def __init__(self, picture_frames, triggered_story):
+        self.triggered_story = triggered_story
+        super(Pattern, self).__init__(picture_frames)
+        
 class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
@@ -66,10 +72,19 @@ class SSManager(manager.StoryManager):
     #SCREENSAVER_TIMEOUT = 60 * 3
     SCREENSAVER_TIMEOUT = 5#0 * 3
 
+    # TODO storyboard -> picture_frames
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, period_length=5)
         self.instrument = Instrument(storyboard, looper)
-        self.bonus = PoC(storyboard, looper)
+        self.bat_adventure = BatAdventure(storyboard, looper, 1)
+        patterns = []
+        for narative in [self.bat_adventure]:
+            activators = [pf for idx, pf in enumerate(narative.foci) if idx % 2 != 0]
+            patterns.append(Pattern(activators, narative))
+            print activators
+        # TODO: create a new storyboard instead
+        storyboard.patterns = patterns
+
         super(SSManager, self).__init__(hc, storyboard, looper)
 
     def select_story(self):
@@ -79,10 +94,12 @@ class SSManager(manager.StoryManager):
              if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
                 return self.screensaver
              elif self.storyboard.pattern_complete:
-                return self.bonus
+                return self.storyboard.target_pattern.triggered_story
         # Come out of screensaver mode into instrument mode if touched
         if isinstance(self.current_story, Screensaver) and self.storyboard.touched:
             return self.instrument
+        # XXX: TODO: Make screensaver "finish", keep track of loops here
+        #            And after so many, restart
         # Patiently wait for whatever is running to finish
         if not self.current_story.finished:
             return self.current_story
@@ -114,20 +131,69 @@ class Instrument(manager.MusicalStory):
                 pf.white = pf.MAX_WHITE / 3
         return True
 
-class PoC(manager.MusicalStory):
-    STORY_LENGTH = 10
+class Narative(manager.MusicalStory):
+
+    def __init__(self, storyboard, looper, foci, time_per_frame=10):
+        self.foci = foci
+        self.time_per_frame = time_per_frame
+        super(Narative, self).__init__(storyboard, looper)
 
     def plot(self, t):
-        focus_idx = int(mmath.segment(t, self.STORY_LENGTH, 0, len(self.storyboard)))
+        story_length = len(self.foci) * self.time_per_frame
+        focus_idx = int(mmath.segment(t, story_length, 0, len(self.foci)))
         focus = self.storyboard[focus_idx]
         for pf in self.storyboard:
             if pf == focus:
                 continue
             pf.blackout()
-            focus.mood(pf, t)
+            focus.mood(pf, t, self.time_per_frame)
         focus.blackout()
         focus.white = focus.MAX_WHITE
-        return t < self.STORY_LENGTH
+        return t < story_length
+
+class TreeArt(Narative):
+
+    def __init__(self, storyboard, looper, time_per_frame=10):
+        foci_classes = [
+            RedSitsAlone,
+            RedSewsBat,
+            RedFinishesBat,
+            RedHugsBat,
+            RedPlaysWithBat,
+            RedHangsBat
+        ]
+        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
+        super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
+
+class BatAdventure(Narative):
+
+    def __init__(self, storyboard, looper, time_per_frame=10):
+        foci_classes = [
+            RedSitsAlone,
+            RedSewsBat,
+            RedFinishesBat,
+            BatFliesAway,
+            BatIsSad,
+            PlanetTapsShoulder,
+            PlanetHangout
+        ]
+        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
+        super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
+
+class BatAdventure(Narative):
+
+    def __init__(self, storyboard, looper, time_per_frame=10):
+        foci_classes = [
+            RedSitsAlone,
+            RedSewsBat,
+            RedFinishesBat,
+            BatFliesAway,
+            RedIsSad,
+            PlanetTapsShoulder,
+            PlanetHangout
+        ]
+        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
+        super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
 
 class SonicStoryboard(pictureframe.Storyboard):
     pass
@@ -140,6 +206,7 @@ class SonicStoryboard(pictureframe.Storyboard):
 #        lambda pf, t: pf.fun(t),
 #        lambda pf, t: pf.contentment(t),
 #    ]
+
 
 class Screensaver(manager.Story):
 
@@ -183,25 +250,24 @@ class RedSitsAlone(SSPictureFrame):
     Red sitting alone bored
     """
     @staticmethod
-    def mood(pf, t):
-        pf.blue = pf.MAX_BLUE
+    def mood(pf, t, span):
+        pf.blue = pf.MAX_BLUE #mmath.triangle(t, span, pf.MIN_BLUE, pf.MAX_BLUE)
 
 class RedSewsBat(SSPictureFrame):
     """
     Red sewing, making the bat
     """
     @staticmethod
-    def mood(pf, t):
-        pf.red = 255
-        pf.green = 255
-        pf.blue = 0
+    def mood(pf, t, span):
+        # yellow
+        pf.hsv = (1, 1, 0)
 
 class RedFinishesBat(SSPictureFrame):
     """
     Red finishes creation, sense of accomplishment
     """
     @staticmethod
-    def mood(pf, t):
+    def mood(pf, t, span):
         pf.green = pf.MAX_GREEN
 
 class RedHugsBat(SSPictureFrame):
@@ -209,38 +275,105 @@ class RedHugsBat(SSPictureFrame):
     Love, hugging creation
     """
     @staticmethod
-    def mood(pf, t):
+    def mood(pf, t, span):
         pf.red = pf.MAX_RED
- 
+
 class RedPlaysWithBat(SSPictureFrame):
-    pass
+    """
+    Playing with bat toy, having fun
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        # magenta
+        pf.red = 255
+        pf.green = 0
+        pf.blue = 255
 
 class RedHangsBat(SSPictureFrame):
-    pass
+    """
+    Hangs bat in the tree
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        pf.red = 160
+        pf.green = 32
+        pf.blue = 240
 
 class BatFliesAway(SSPictureFrame):
-    pass
+    """
+    Bat flies away
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        pf.blue = pf.MAX_BLUE
 
 class BatTakesOff(SSPictureFrame):
-    pass
+    """
+    Bat takes off, sense of adventure
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        pf.red = 255
+        pf.green = 165
+        pf.blue = 0
 
 class BatEatsStars(SSPictureFrame):
-    pass
+    """
+    Bat eating stars adventure
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        """
+        Yellow to purple
+        """
+        #TODO
+        pass
+        
 
 class BatTripsBalls(SSPictureFrame):
-    pass
-
-class RedSittingAlone(SSPictureFrame):
-    pass
+    """
+    Bat glowing sparkly showoff
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        """
+        Really fucking trippy
+        """
+        pass
 
 class RedIsSad(SSPictureFrame):
-    pass
+    """
+    Red is sad
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        pf.blue = pf.MAX_BLUE / 2.0
 
 class PlanetTapsShoulder(SSPictureFrame):
-    pass
+    """
+    Planet taps on shoulder to console
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        """
+        TODO: teal
+        """
+        pf.red = 0
+        pf.green = 193
+        pf.blue = 255
 
-class PlanetFriendship(SSPictureFrame):
-    pass
+class PlanetHangout(SSPictureFrame):
+    """
+    Red and Planet friendship, hanging out
+    """
+    @staticmethod
+    def mood(pf, t, span):
+        """
+        TODO: fuschia
+        """
+        pf.red = 255
+        pf.green = 192
+        pf.blue = 203
 
 if __name__ == '__main__':
     main()
