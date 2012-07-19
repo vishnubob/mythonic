@@ -75,6 +75,9 @@ class HardwareChain(object):
         self.touch_frames = [FrameTouch(addr, self) for addr in self.addresses]
         self.frame_idx = 0
 
+    def get_touch_triggers(self):
+        return [obj.trigger() for obj in self.touch_frames]
+
     @property
     def length(self):
         return len(self.addresses)
