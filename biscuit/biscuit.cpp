@@ -14,6 +14,7 @@
 #define GRN                 PD4
 #define RED                 PD2
 #define FRAME_COUNT         1
+#define BAUD_RATE           1000000
 
 // Helper macros for frobbing bits
 #define bitset(var,bitno) ((var) |= (1 << (bitno)))
@@ -21,8 +22,6 @@
 #define bittst(var,bitno) (var& (1 << (bitno)))
 
 const int _led_map[] = {9, 10, 11, 3, 5, 6};
-unsigned long touch_count = 0;
-unsigned long sensor_flip = 0;
 
 /******************************************************************************
  ** serial read / writer helper functions
@@ -155,7 +154,6 @@ public:
         {
             _average[_sensor_idx].push(current_sensor->get_current_value());
             _sensor_idx = (_sensor_idx + 1) % TOUCH_COUNT;
-            sensor_flip++;
         }
     }
 
@@ -190,7 +188,10 @@ private:
  ** Globals
  ******************************************************************************/
 
-#define LIGHT_MSG (LED_COUNT * FRAME_COUNT)
+// since everything is transmitted in 7bits (data wise)
+// we use an extra frame for the 6 missing bits for each 
+// channel.
+#define LIGHT_MSG (LED_COUNT * FRAME_COUNT + 1)
 
 Pin             leds[LED_COUNT];
 TouchSet        touchset;
@@ -204,34 +205,35 @@ uint8_t         light_buffer[LIGHT_MSG];
 void setup()
 {
     // pins
-    Serial.begin(9600);
+    Serial.begin(BAUD_RATE);
     pinMode(GRN, OUTPUT);
     pinMode(RED, OUTPUT);
     pinMode(DE485_PIN, OUTPUT);
     pinMode(RE485_PIN, OUTPUT);
     disable_serial_output();
     
+    // init the LEDs
+    memset(light_buffer, 0, LIGHT_MSG * sizeof(char));
     for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
     {
         leds[ch].init(_led_map[ch]);
         leds[ch].set(0);
     }
     
-    // board_addr = BOARD_ADDR;
+    // BOARD_ADDR is defined by a macro, 
+    // usually built on the fly by burn.py
     board_addr = BOARD_ADDR;
-    /* blink out our board address */
+
+    // enable timer2 overflow interrupt
+    // for touch sensors
+    sbi(TIMSK2, TOIE2);
+
+    /* blink */
     digitalWrite(GRN, HIGH);
     delay(300);
     digitalWrite(GRN, LOW);
     delay(300);
     digitalWrite(GRN, HIGH);
-        
-    memset(light_buffer, 0, LIGHT_MSG * sizeof(char));
-    // enable timer2 overflow interrupt
-    // for touch sensors
-    sbi(TIMSK2, TOIE2);
-    enable_serial_output();
-    Serial.println("hey baby");
 }
 
 /******************************************************************************
@@ -252,29 +254,13 @@ uint8_t serial_state = 0;
 uint8_t serial_command = 0;
 uint8_t command_address = 0;
 
-void loop()
-{
-    if (touchset.trigger())
-    {
-        Serial.println("TOUCH");
-    }
-}
-
-void _loop(void)
+void loop(void)
 {
     if (!Serial.available()) 
         return;
 
-    uint16_t lowhi = Serial.read();
-    char ch = lowhi & 0xFF;
-    char flags = (lowhi >> 8) & 0xFF;
+    char ch = Serial.read();
 
-    //if (flags & PARITY_ERROR)
-    if (flags & 0)
-    {
-        serial_state = WAIT_FOR_COMMAND_STATE;
-        digitalWrite(RED, HIGH);
-    } else
     if (ch & 0x80)
     {
         serial_state = COMMAND_STATE;
@@ -319,8 +305,7 @@ void _loop(void)
                 } else
                 if (serial_command == TOUCH_COMMAND)
                 {
-                    //uint8_t val = get_touch_sample();
-                    uint8_t val = 0;
+                    uint8_t val = (uint8_t)touchset.trigger();
                     enable_serial_output();
                     Serial.write(val);
                     disable_serial_output();
@@ -336,21 +321,20 @@ void _loop(void)
             break;
         case LIGHT_RECV_STATE_ACTUAL:
             light_buffer[light_buffer_idx++] = ch;
-            if (light_buffer_idx >= LED_COUNT)
+            if (light_buffer_idx >= (LED_COUNT + 1))
             {
                 for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
                 {
-                    leds[ch].set(light_buffer[ch]);
+                    uint8_t val = (light_buffer[ch] << 1) | (light_buffer[LED_COUNT] & (1 << ch)) >> ch;
+                    leds[ch].set(val);
                 }
                 serial_state = WAIT_FOR_COMMAND_STATE;
             }
             break;
     }
-
 }
 
 SIGNAL(TIMER2_OVF_vect)
 {
     touchset.step();
-    touch_count++;
 }
