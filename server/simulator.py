@@ -7,34 +7,33 @@ import pygame
 
 import biscuit
 import ss
-from ss import *
 import pictureframe
 
 from music import make_looper
 
 BOX_HEIGHT = 50
 BOX_WIDTH = 100
-FRAME_COUNT = len(PICTURE_FRAMES)
-SCREEN = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT))
 
 def main():
-    looper = make_looper(MIDI_TRACKS, MIDI_CLIENT, MIDI_PORT)
-    picture_frames = []
-    hc = PyGHardwareChain(FRAME_COUNT)
-    pygame.display.flip()
-    manager = PyGManager(hc, ss.SonicStoryboard(PICTURE_FRAMES), looper)
+    looper = make_looper(ss.MIDI_TRACKS, ss.MIDI_CLIENT, ss.MIDI_PORT)
+    picture_frames = ss.PICTURE_FRAMES
+    hc = PyGHardwareChain(len(picture_frames))
+    manager = PyGManager(hc, ss.SonicStoryboard(picture_frames), looper)
     manager.run()
 
 class PyGHardwareChain(biscuit.HardwareChain):
 
     def __init__(self, length):
         super(PyGHardwareChain, self).__init__(None, length)
-        self._touched = [[False] * 4] * len(self.addresses)
+        length = len(self.addresses)
+        self._touched = [[False] * 4] * length
+        self.screen = pygame.display.set_mode((BOX_WIDTH * 3, length * BOX_HEIGHT))
+        pygame.display.flip()
 
     def draw_light(self, address, column, rgb):
         y = address * BOX_HEIGHT
         x = column * BOX_WIDTH
-        pygame.draw.rect(SCREEN, rgb, (x, y, BOX_WIDTH, BOX_HEIGHT))
+        pygame.draw.rect(self.screen, rgb, (x, y, BOX_WIDTH, BOX_HEIGHT))
 
     def send_light_data(self, address, light_data):
         ch = light_data.pages[light_data.page_idx]
