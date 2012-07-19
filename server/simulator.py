@@ -23,15 +23,8 @@ TEST_TRACKS = [
     "../music_raw/drum_51.mid",
     "../music_raw/drum_77.mid"
 ]
-PATTERNS = [[0, 1]]#, [5, 6], [4, 6]]
 BOX_HEIGHT = 75
 BOX_WIDTH = 100
-PICTURE_FRAMES = [
-    RedSitsAlone(),
-    RedSewsBat(),
-    RedFinishesBat(),
-    RedHugsBat()
-]
 FRAME_COUNT = len(PICTURE_FRAMES)
 SCREEN = pygame.display.set_mode((BOX_WIDTH * 3, FRAME_COUNT * BOX_HEIGHT))
 
@@ -40,7 +33,7 @@ def main():
     picture_frames = []
     hc = PyGHardwareChain(FRAME_COUNT)
     pygame.display.flip()
-    manager = PyGManager(hc, ss.SonicStoryboard(PICTURE_FRAMES, PATTERNS), looper)
+    manager = PyGManager(hc, ss.SonicStoryboard(PICTURE_FRAMES), looper)
     manager.run()
 
 class PyGHardwareChain(biscuit.HardwareChain):
