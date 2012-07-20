@@ -18,7 +18,7 @@ def main():
     looper = make_looper(ss.MIDI_TRACKS, ss.MIDI_CLIENT, ss.MIDI_PORT)
     picture_frames = ss.PICTURE_FRAMES
     hc = PyGHardwareChain(len(picture_frames))
-    manager = PyGManager(hc, ss.SonicStoryboard(picture_frames), looper)
+    manager = PyGManager(hc, pictureframe.Storyboard(picture_frames), looper)
     manager.run()
 
 class PyGHardwareChain(biscuit.HardwareChain):

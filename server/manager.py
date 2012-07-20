@@ -72,6 +72,7 @@ class Story(object):
         self.finished = False
         self.transition_started_at = None
         self.plot_started_at = None
+        self.looped_count = 0
 
     def think(self):
         """
@@ -92,6 +93,7 @@ class Story(object):
                 self.finished = True
                 self.transitioned = False
                 self.transition_started_at = None
+                self.looped_count += 1
 
     def transition(self, t):
         """
@@ -118,6 +120,7 @@ class Story(object):
         self.transitioned = False
         self.transition_started_at = None
         self.plot_started_at = None
+        self.looped_count = 0
 
     def activate(self):
         self._active = True

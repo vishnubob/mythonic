@@ -3,9 +3,6 @@
 import math
 import random
 import serial
-import sys
-
-import yaml
 
 import midi.sequencer
 import midi
@@ -48,13 +45,8 @@ def main():
         picture_frame = [pf for pf in PICTURE_FRAMES if pf.address == address][0]
         picture_frames.append(picture_frame)
     hc = HardwareChain(serial_ports, addresses)
-    manager = SSManager(hc, SonicStoryboard(picture_frames), looper)
+    manager = SSManager(hc, pictureframe.Storyboard(picture_frames), looper)
     manager.run()
-
-class Pattern(list):
-    def __init__(self, picture_frames, triggered_story):
-        self.triggered_story = triggered_story
-        super(Pattern, self).__init__(picture_frames)
 
 class SSManager(manager.StoryManager):
     """
@@ -63,35 +55,36 @@ class SSManager(manager.StoryManager):
     SCREENSAVER_TIMEOUT = 60 * 3
 
     def __init__(self, hc, storyboard, looper=None):
-        self.screensaver = Screensaver(storyboard, period_length=5)
+        self.screensaver = Screensaver(storyboard, span=60)
         self.instrument = Instrument(storyboard, looper)
         time_per_frame = 1
-        naratives = [
+        self.naratives = [
             BatAdventure(storyboard, looper, time_per_frame),
             TreeArt(storyboard, looper, time_per_frame),
             FriendshipPlanet(storyboard, looper, time_per_frame)
         ]
-        for narative in naratives:
+        for narative in self.naratives:
             activators = [pf for idx, pf in enumerate(narative.foci) if idx % 2 != 0]
-            storyboard.patterns.append(Pattern(activators, narative))
+            storyboard.patterns.append(pictureframe.Pattern(activators, narative))
         super(SSManager, self).__init__(hc, storyboard, looper)
 
     def select_story(self):
-        if self.current_story is None:
+        current = self.current_story
+        if current is None:
             return self.instrument
-        if isinstance(self.current_story, Instrument):
+        if isinstance(current, Instrument):
              if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
                 return self.screensaver
              if self.storyboard.pattern_complete:
                 return self.storyboard.target_pattern.triggered_story
-        # Come out of screensaver mode into instrument mode if touched
-        if isinstance(self.current_story, Screensaver) and self.storyboard.touched:
-            return self.instrument
-        # XXX: TODO: Make screensaver "finish", keep track of loops here
-        #            And after so many, restart
-        # Patiently wait for whatever is running to finish
-        if not self.current_story.finished:
-            return self.current_story
+        if isinstance(current, Screensaver):
+            if self.storyboard.touched:
+                return self.instrument
+            if current.finished and current.looped_count >= 2:
+                return self.naratives[int(random.random() * len(self.naratives))]
+            return self.screensaver
+        if not current.finished:
+            return current
         # Default to Instrument
         return self.instrument
 
@@ -186,31 +179,25 @@ class BatAdventure(Narative):
         foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
         super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
 
-class SonicStoryboard(pictureframe.Storyboard):
-    pass
-    # Turn this into a field of
-#    moods = [
-#        lambda pf, t: pf.boredom(t),
-#        lambda pf, t: pf.craftsmanship(t),
-#        lambda pf, t: pf.accomplishment(t),
-#        lambda pf, t: pf.love(t),
-#        lambda pf, t: pf.fun(t),
-#        lambda pf, t: pf.contentment(t),
-#    ]
-
 
 class Screensaver(manager.Story):
 
-    def __init__(self, storyboard, period_length):
-        self.period_length = period_length
+    def __init__(self, storyboard, span):
+        self.span = span
         self.pattern_idx = 0
         super(Screensaver, self).__init__(storyboard)
 
     def hinted_pattern(self, t):
+        """
+        Returns the next pattern to hint at.
+        When finished, returns None
+        """
         patterns = self.storyboard.patterns
-        if len(patterns) <= 0:
+        if len(patterns) == 0:
             return None
-        idx = int(t / self.period_length) % len(patterns)
+        idx = int(t / float(self.span) / len(patterns))
+        if idx >= len(patterns):
+            return None
         if self.pattern_idx != idx:
             for pf in patterns[self.pattern_idx]:
                 pf.blackout()
@@ -220,7 +207,7 @@ class Screensaver(manager.Story):
     def plot(self, t):
         pattern = self.hinted_pattern(t)
         if pattern is None:
-            pattern = []
+            return False
         for offset, pf in enumerate(pattern):
             pf.pattern_hint(t + offset)
         return True

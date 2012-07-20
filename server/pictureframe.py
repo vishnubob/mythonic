@@ -3,6 +3,11 @@ import time
 
 import mmath
 
+class Pattern(list):
+    def __init__(self, picture_frames, triggered_story):
+        self.triggered_story = triggered_story
+        super(Pattern, self).__init__(picture_frames)
+
 class Storyboard(list):
     """
     A container for picture frames and patterns with convenience
