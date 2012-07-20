@@ -55,7 +55,7 @@ class SSManager(manager.StoryManager):
     SCREENSAVER_TIMEOUT = 60 * 3
 
     def __init__(self, hc, storyboard, looper=None):
-        self.screensaver = Screensaver(storyboard, span=60)
+        self.screensaver = Screensaver(storyboard, span=10)
         self.instrument = Instrument(storyboard, looper)
         time_per_frame = 1
         self.naratives = [
@@ -187,6 +187,10 @@ class Screensaver(manager.Story):
         self.pattern_idx = 0
         super(Screensaver, self).__init__(storyboard)
 
+    @property
+    def pattern_span(self):
+        return float(self.span) / len(self.storyboard.patterns)
+
     def hinted_pattern(self, t):
         """
         Returns the next pattern to hint at.
@@ -195,7 +199,7 @@ class Screensaver(manager.Story):
         patterns = self.storyboard.patterns
         if len(patterns) == 0:
             return None
-        idx = int(t / float(self.span) / len(patterns))
+        idx = int(t / self.pattern_span)
         if idx >= len(patterns):
             return None
         if self.pattern_idx != idx:
@@ -208,8 +212,12 @@ class Screensaver(manager.Story):
         pattern = self.hinted_pattern(t)
         if pattern is None:
             return False
-        for offset, pf in enumerate(pattern):
-            pf.pattern_hint(t + offset)
+        for pf in self.storyboard:
+            pf.blackout()
+        hinted_frame_idx = int(t/(self.pattern_span/float(len(pattern))))
+        if hinted_frame_idx < len(pattern):
+            hinted_frame = pattern[hinted_frame_idx]
+            hinted_frame.uv = hinted_frame.MAX_UV
         return True
 
 class SSPictureFrame(pictureframe.PictureFrame):
