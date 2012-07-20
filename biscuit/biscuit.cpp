@@ -169,7 +169,7 @@ public:
         {
             for(int x = 0; x < TOUCH_COUNT; ++x)
             {
-                _average[x].set(20);
+                _average[x].set(10);
             }
             _last_cal = millis();
         }
@@ -269,8 +269,8 @@ void loop(void)
 
     switch(serial_state)
     {
+        digitalWrite(RED, LOW);
         case COMMAND_STATE:
-            digitalWrite(RED, LOW);
             if (ch == 'L')
             {
                 serial_command = LIGHT_RECV_STATE;
@@ -305,9 +305,8 @@ void loop(void)
                 } else
                 if (serial_command == TOUCH_COMMAND)
                 {
-                    uint8_t val = (uint8_t)touchset.trigger();
                     enable_serial_output();
-                    Serial.write(val);
+                    Serial.write((uint8_t)touchset.trigger());
                     disable_serial_output();
                     serial_state = WAIT_FOR_COMMAND_STATE;
                 } else
@@ -325,7 +324,7 @@ void loop(void)
             {
                 for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
                 {
-                    uint8_t val = (light_buffer[ch] << 1) | (light_buffer[LED_COUNT] & (1 << ch)) >> ch;
+                    uint8_t val = (light_buffer[ch] << 1) | ((light_buffer[LED_COUNT] & (1 << (LED_COUNT - ch))) >> (LED_COUNT - ch));
                     leds[ch].set(val);
                 }
                 serial_state = WAIT_FOR_COMMAND_STATE;

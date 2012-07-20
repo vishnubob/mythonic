@@ -7,7 +7,7 @@ import argparse
 import select
 import serial
 import termios
-import biscuit
+import biscuit_new as biscuit
 import tty
 
 OLD_STDIN = None
@@ -33,7 +33,7 @@ def get_cli():
                 continue
             else:
                 boards = arg.split(',')
-                addresses += map(int, boards)
+                addresses += [(x - 1) for x in map(int, boards)]
                 ports += [port] * len(boards)
                 port = None
         if port or not (ports or addresses):
@@ -95,11 +95,12 @@ class TestManager(biscuit.Manager):
                 break
 
         if touch_flag != None:
+            print touch_flag
             self.report("TOUCH!")
             self.hc.set_light(touch_flag, 4, 0xff)
-            for x in range(5):
+            for x in range(10):
                 self.cycle()
-            time.sleep(.1)
+            time.sleep(.5)
             self.hc.set_light(touch_flag, 4, 0)
 
         ch = self.readch()
