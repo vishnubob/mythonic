@@ -91,8 +91,7 @@ class Story(object):
                 self.finished = False
             else:
                 self.finished = True
-                self.transitioned = False
-                self.transition_started_at = None
+                self.plot_started_at = None
                 self.looped_count += 1
 
     def transition(self, t):

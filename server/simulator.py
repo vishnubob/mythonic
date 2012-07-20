@@ -8,6 +8,7 @@ import pygame
 import biscuit
 import ss
 import pictureframe
+import server
 
 from music import make_looper
 
@@ -15,8 +16,8 @@ BOX_HEIGHT = 50
 BOX_WIDTH = 100
 
 def main():
-    looper = make_looper(ss.MIDI_TRACKS, ss.MIDI_CLIENT, ss.MIDI_PORT)
-    picture_frames = ss.PICTURE_FRAMES
+    looper = make_looper(server.MIDI_TRACKS, server.MIDI_CLIENT, server.MIDI_PORT)
+    picture_frames = server.PICTURE_FRAMES
     hc = PyGHardwareChain(len(picture_frames))
     manager = PyGManager(hc, pictureframe.Storyboard(picture_frames), looper)
     manager.run()
