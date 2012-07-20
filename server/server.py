@@ -32,19 +32,19 @@ ROUTING = {
 }
 
 PICTURE_FRAMES = [
-    RedSitsAlone(),
-    RedSewsBat(),
-    RedFinishesBat(),
-    RedHugsBat(),
-    RedPlaysWithBat(),
-    RedHangsBat(),
-    BatFliesAway(),
-    BatTakesOff(),
-    BatEatsStars(),
-    BatTripsBalls(),
-    RedIsSad(),
-    PlanetTapsShoulder(),
-    PlanetHangout()
+    RedSitsAlone(1),
+    RedSewsBat(2),
+    RedFinishesBat(3),
+    RedHugsBat(4),
+    RedPlaysWithBat(5),
+    RedHangsBat(6),
+    BatFliesAway(10),
+    BatTakesOff(9),
+    BatEatsStars(8),
+    BatTripsBalls(7),
+    RedIsSad(11),
+    PlanetTapsShoulder(12),
+    PlanetHangout(13)
 ]
 
 def main():
