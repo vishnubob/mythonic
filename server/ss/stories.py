@@ -1,5 +1,6 @@
 import manager
 import mmath
+import random
 
 from ss.pictureframes import *
 
@@ -11,7 +12,7 @@ class StartupTest(manager.Story):
                 pf.blue = pf.MAX_BLUE
             else:
                 pf.red = pf.MAX_RED
-        return t < max([pf.address * 2 for pf in self.storyboard])
+        return t < max([pf.address for pf in self.storyboard])
 
 class Instrument(manager.MusicalStory):
 
@@ -139,7 +140,7 @@ class Screensaver(manager.Story):
             return False
         for pf in self.storyboard:
             pf.blackout()
-        hinted_frame_idx = int(t/(self.pattern_span/float(len(pattern))))
+        hinted_frame_idx = int(t/(self.pattern_span/float(len(pattern)))) % len(pattern)
         if hinted_frame_idx < len(pattern):
             hinted_frame = pattern[hinted_frame_idx]
             hinted_frame.uv = hinted_frame.MAX_UV

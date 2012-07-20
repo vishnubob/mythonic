@@ -1,3 +1,4 @@
+import mmath
 import pictureframe
 
 class SSPictureFrame(pictureframe.PictureFrame):
@@ -5,6 +6,10 @@ class SSPictureFrame(pictureframe.PictureFrame):
     def __init__(self, address):
         self.address = address
         super(SSPictureFrame, self).__init__()
+
+    def pattern_hint(self, t, span=0.5):
+        on = int(t / (span * 2.0)) % 2 == 0
+        self.uv = self.MAX_UV if on else self.MIN_UV
 
 class RedSitsAlone(SSPictureFrame):
     """

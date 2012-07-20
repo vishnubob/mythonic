@@ -6,7 +6,7 @@ class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
     """
-    SCREENSAVER_TIMEOUT = 60 * 3
+    SCREENSAVER_TIMEOUT = 0#60 * 3
 
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, span=10)
@@ -26,7 +26,8 @@ class SSManager(manager.StoryManager):
     def select_story(self):
         current = self.current_story
         if current is None:
-            return self.startup_test
+            #return self.startup_test
+            return self.instrument
         if isinstance(current, Instrument):
              if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
                 return self.screensaver
