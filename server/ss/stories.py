@@ -14,6 +14,8 @@ class SSManager(manager.StoryManager):
         self.screensaver = Screensaver(storyboard, span=10)
         self.instrument = Instrument(storyboard, looper)
         self.startup_test = StartupTest(storyboard)
+        self.dice = Dice(storyboard)
+        self.blackout_game = BlackoutGame(storyboard)
         time_per_frame = 1
         self.naratives = [
             BatAdventure(storyboard, looper, time_per_frame),
@@ -29,7 +31,9 @@ class SSManager(manager.StoryManager):
         current = self.current_story
         if current is None:
             #return self.startup_test
-            return self.instrument
+            #return self.instrument
+            #return self.dice
+            #return self.blackout_game
         if isinstance(current, Instrument):
              if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
                 return self.screensaver
@@ -46,7 +50,52 @@ class SSManager(manager.StoryManager):
         # Default to Instrument
         return self.instrument
 
+class BlackoutGame(manager.Story):
+
+    def __init__(self, storyboard):
+        super(BlackoutGame, self).__init__(storyboard)
+        self.blacked_out = [random.choice(self.storyboard)]
+
+    @property
+    def lighted(self):
+        return [pf for pf in self.storyboard if pf not in self.blacked_out]
+
+    def plot(self, t):
+        for pf in self.storyboard:
+            if pf.touched:
+                if pf in self.blacked_out:
+                    self.blacked_out.remove(pf)
+                    if len(self.lighted) > 0:
+                        candidates = self.lighted
+                        candidates.remove(pf)
+                    if len(self.lighted) > 0:
+                        self.blacked_out.append(random.choice(candidates))
+                else:
+                    self.blacked_out.append(pf)
+            if pf in self.blacked_out:
+                pf.blackout()
+            else:
+                pf.white = pf.MAX_WHITE
+        return len(self.lighted) > 0
+
+class Dice(manager.Story):
+
+    def randomize(self, pf, saturation=1):
+        pf.hsv = (random.random(), saturation, 1)
+        pf.uv = pf.MAX_UV if random.random() >= 0.5 else pf.MIN_UV
+
+    def transition(self, t):
+        for pf in self.storyboard:
+            self.randomize(pf)
+
+    def plot(self, t):
+        for idx, pf in enumerate(self.storyboard):
+            if idx > t:
+                self.randomize(pf)
+        return t < len(self.storyboard) + 10
+
 class StartupTest(manager.Story):
+
     def plot(self, t):
         for idx, pf in enumerate(self.storyboard):
             pf.blackout()
@@ -82,6 +131,11 @@ class Instrument(manager.MusicalStory):
                     self.stop(idx)
                 pf.white = pf.MAX_WHITE / 3
         return True
+
+    def deactivate(self):
+        for idx, track in enumerate(self.looper.tracks):
+            self.looper.stop(idx)
+        super(Instrument, self).deactivate()
 
 class Narative(manager.MusicalStory):
 
