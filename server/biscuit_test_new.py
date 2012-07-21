@@ -46,7 +46,7 @@ def get_cli():
 
 def main():
     (ports, addresses) = get_cli()
-    hc = biscuit.HardwareChain(ports, addresses, write_delay=.001)
+    hc = biscuit.HardwareChain(ports, addresses, write_delay=.005)
     manager = TestManager(hc)
     try:
         manager.run()
@@ -95,7 +95,7 @@ class TestManager(biscuit.Manager):
                 break
 
         if touch_flag != None:
-            print touch_flag
+            self.report(touch_flag)
             self.report("TOUCH!")
             self.hc.set_light(touch_flag, 4, 0xff)
             for x in range(10):
