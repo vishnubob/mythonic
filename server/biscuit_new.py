@@ -34,15 +34,20 @@ class FrameLights(object):
         self.flip()
 
 class FrameTouch(object):
-    def __init__(self, address, hc, quiescent_length=10):
+    def __init__(self, address, hc, quiescent_length=10, refresh_length=.3):
         self.address = address
         self.quiescent_length = quiescent_length
         self.hc = hc
+        self.touch_trigger = False
+        self.refresh_length = refresh_length
+        self.last_refresh = 0
+        self.touch_ts = 0
         self.idx = 0
 
     def go(self):
         if self.is_quiescent():
             return
+        self.last_refresh = time.time()
         if self.hc.get_touch(self.address):
             self.set_trigger()
 
@@ -51,7 +56,9 @@ class FrameTouch(object):
         self.touch_ts = time.time()
 
     def is_quiescent(self):
-        return time.time() < (self.touch_ts + self.quiescent_length)
+        now = time.time()
+        return (now < (self.last_refresh + self.refresh_length)) or \
+                (now < (self.touch_ts + self.quiescent_length))
 
     def trigger(self):
         if self.touch_trigger:
@@ -61,7 +68,7 @@ class FrameTouch(object):
         return False
 
 class HardwareChain(object):
-    def __init__(self, ports, addresses, write_delay=.001, timeout_factor=3):
+    def __init__(self, ports, addresses, write_delay=.005, timeout_factor=5):
         self.write_delay = write_delay
         self.timeout_factor = timeout_factor
         self.addresses = addresses
@@ -104,6 +111,7 @@ class HardwareChain(object):
         port.write(chr(addr))
 
     def send_light_data(self, address, light_data):
+        print "LIGHT", address, list(light_data)
         cmd = 0x80 | ord('L')
         port = self.ports[address]
         port.write(chr(cmd))
@@ -113,7 +121,7 @@ class HardwareChain(object):
         light_data = list(light_data)
         extra_byte = 0
         for (idx, val) in enumerate(light_data):
-            extra_byte = (extra_byte << idx) | (val & 0x1)
+            extra_byte = (extra_byte << 1) | (val & 0x1)
             val >>= 1
             port.write(chr(val))
             time.sleep(self.write_delay)
@@ -125,8 +133,11 @@ class HardwareChain(object):
         port = self.ports[address]
         port.write(chr(cmd))
         time.sleep(self.write_delay)
-        port.write(chr(addr))
+        port.write(chr(address))
         val = port.read(1)
+        if not len(val):
+            return False
+        val = ord(val)
         if not val:
             return False
         return bool(val)
@@ -158,7 +169,6 @@ class Manager(object):
         print "Booting"
         for x in range(cycles):
             self.cycle()
-        self.hc.normalize_touch()
         print "Booted"
 
     def run(self):

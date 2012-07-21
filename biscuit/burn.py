@@ -48,10 +48,10 @@ def write_board(port, board_addr):
     print upload_cmd
     ret = os.system(upload_cmd)
     assert(ret == 0)
-    eeprom_cmd = "avrdude -c avrispv2 -p m328p -F -P %s -U eeprom:w:eeprom_board%s.txt" % (port, board_addr + 1)
-    print eeprom_cmd
-    ret = os.system(eeprom_cmd)
-    assert(ret == 0)
+    # eeprom_cmd = "avrdude -c avrispv2 -p m328p -F -P %s -U eeprom:w:eeprom_board%s.txt" % (port, board_addr + 1)
+    #print eeprom_cmd
+    #ret = os.system(eeprom_cmd)
+    #assert(ret == 0)
 
 if __name__ == "__main__":
     port = sys.argv[1]
