@@ -109,7 +109,7 @@ public:
         {
             sum += _data[sum_idx];
         }
-        return (sum >> 3);
+        return (sum << 3);
     }
 
     void set(unsigned long offset)
@@ -138,13 +138,13 @@ public:
         _sensors[1] = CapSense(A0, A2);
         _sensors[2] = CapSense(A0, A3);
         _sensors[3] = CapSense(A0, A4);
-        _average[0] = Average(8);
-        _average[1] = Average(8);
-        _average[2] = Average(8);
-        _average[3] = Average(8);
+        _average[0] = Average(20);
+        _average[1] = Average(20);
+        _average[2] = Average(20);
+        _average[3] = Average(20);
         _sensor_idx = 0;
         _last_cal = 0;
-        _timeout_cal = 2000;
+        _timeout_cal = 200;
     }
 
     void step()
@@ -169,7 +169,7 @@ public:
         {
             for(int x = 0; x < TOUCH_COUNT; ++x)
             {
-                _average[x].set(10);
+                _average[x].set(50);
             }
             _last_cal = millis();
         }

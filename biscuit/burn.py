@@ -23,6 +23,7 @@ def write_header(board_addr):
     f.close()
 
 def refresh_build():
+    os.system("rm -rf biscuit.o biscuit.hex")
     build_cmd = "make biscuit.hex"
     print build_cmd
     ret = os.system(build_cmd)
