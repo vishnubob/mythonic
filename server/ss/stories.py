@@ -1,9 +1,101 @@
 import manager
 import mmath
+import random
 
 from ss.pictureframes import *
 
+class SSManager(manager.StoryManager):
+    """
+    Manages which stories get activated next
+    """
+    SCREENSAVER_TIMEOUT = 60 * 3
+
+    def __init__(self, hc, storyboard, looper=None):
+        self.screensaver = Screensaver(storyboard, span=10)
+        self.instrument = Instrument(storyboard, looper)
+        self.startup_test = StartupTest(storyboard)
+        self.dice = Dice(storyboard)
+        self.blackout_game = BlackoutGame(storyboard)
+        time_per_frame = 1
+        self.naratives = [
+            BatAdventure(storyboard, looper, time_per_frame),
+            TreeArt(storyboard, looper, time_per_frame),
+            FriendshipPlanet(storyboard, looper, time_per_frame)
+        ]
+        for narative in self.naratives:
+            activators = [pf for idx, pf in enumerate(narative.foci) if idx % 2 != 0]
+            storyboard.patterns.append(pictureframe.Pattern(activators, narative))
+        super(SSManager, self).__init__(hc, storyboard, looper)
+
+    def select_story(self):
+        current = self.current_story
+        if current is None:
+            #return self.startup_test
+            #return self.instrument
+            #return self.dice
+            #return self.blackout_game
+        if isinstance(current, Instrument):
+             if self.storyboard.untouched_for >= self.SCREENSAVER_TIMEOUT:
+                return self.screensaver
+             if self.storyboard.pattern_complete:
+                return self.storyboard.target_pattern.triggered_story
+        if isinstance(current, Screensaver):
+            if self.storyboard.touched:
+                return self.instrument
+            if current.finished and current.looped_count >= 2:
+                return self.naratives[int(random.random() * len(self.naratives))]
+            return self.screensaver
+        if not current.finished:
+            return current
+        # Default to Instrument
+        return self.instrument
+
+class BlackoutGame(manager.Story):
+
+    def __init__(self, storyboard):
+        super(BlackoutGame, self).__init__(storyboard)
+        self.blacked_out = [random.choice(self.storyboard)]
+
+    @property
+    def lighted(self):
+        return [pf for pf in self.storyboard if pf not in self.blacked_out]
+
+    def plot(self, t):
+        for pf in self.storyboard:
+            if pf.touched:
+                if pf in self.blacked_out:
+                    self.blacked_out.remove(pf)
+                    if len(self.lighted) > 0:
+                        candidates = self.lighted
+                        candidates.remove(pf)
+                    if len(self.lighted) > 0:
+                        self.blacked_out.append(random.choice(candidates))
+                else:
+                    self.blacked_out.append(pf)
+            if pf in self.blacked_out:
+                pf.blackout()
+            else:
+                pf.white = pf.MAX_WHITE
+        return len(self.lighted) > 0
+
+class Dice(manager.Story):
+
+    def randomize(self, pf, saturation=1):
+        pf.hsv = (random.random(), saturation, 1)
+        pf.uv = pf.MAX_UV if random.random() >= 0.5 else pf.MIN_UV
+
+    def transition(self, t):
+        for pf in self.storyboard:
+            self.randomize(pf)
+
+    def plot(self, t):
+        for idx, pf in enumerate(self.storyboard):
+            if idx > t:
+                self.randomize(pf)
+        return t < len(self.storyboard) + 10
+
 class StartupTest(manager.Story):
+
     def plot(self, t):
         for idx, pf in enumerate(self.storyboard):
             pf.blackout()
@@ -11,7 +103,7 @@ class StartupTest(manager.Story):
                 pf.blue = pf.MAX_BLUE
             else:
                 pf.red = pf.MAX_RED
-        return t < max([pf.address * 2 for pf in self.storyboard])
+        return t < max([pf.address for pf in self.storyboard])
 
 class Instrument(manager.MusicalStory):
 
@@ -39,6 +131,11 @@ class Instrument(manager.MusicalStory):
                     self.stop(idx)
                 pf.white = pf.MAX_WHITE / 3
         return True
+
+    def deactivate(self):
+        for idx, track in enumerate(self.looper.tracks):
+            self.looper.stop(idx)
+        super(Instrument, self).deactivate()
 
 class Narative(manager.MusicalStory):
 
@@ -139,7 +236,7 @@ class Screensaver(manager.Story):
             return False
         for pf in self.storyboard:
             pf.blackout()
-        hinted_frame_idx = int(t/(self.pattern_span/float(len(pattern))))
+        hinted_frame_idx = int(t/(self.pattern_span/float(len(pattern)))) % len(pattern)
         if hinted_frame_idx < len(pattern):
             hinted_frame = pattern[hinted_frame_idx]
             hinted_frame.uv = hinted_frame.MAX_UV
