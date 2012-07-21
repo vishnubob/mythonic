@@ -31,7 +31,7 @@ class SSManager(manager.StoryManager):
         current = self.current_story
         if current is None:
             #return self.startup_test
-            #return self.instrument
+            return self.instrument
             #return self.dice
             #return self.blackout_game
         if isinstance(current, Instrument):
