@@ -28,15 +28,10 @@ class StoryManager(biscuit.Manager):
         The story to delegate to
         """
 
-    def pf_to_addr(self, pf):
-        idx = self.storyboard.index(pf)
-        return self.hc.addresses[idx]
-
     def think(self):
         # Handle touch
-        for addr, directions in enumerate(self.hc.get_touch_triggers()):
-            if reduce(lambda a, b: a or b, directions):
-                position = self.hc.addresses.index(addr)
+        for position, touched in enumerate(self.hc.get_touch_triggers()):
+            if touched:
                 self.storyboard[position].touch()
         # Handle story selection/deselection
         next_story = self.select_story()
@@ -45,7 +40,7 @@ class StoryManager(biscuit.Manager):
                 self.current_story.deactivate()
             next_story.activate()
             self.current_story = next_story
-            print "Story changed to", str(next_story.__class__)
+            print "Story changed to", str(next_story.__class__.__name__)
         # Advance the story
         self.current_story.think()
         # Advance the looper
@@ -54,12 +49,12 @@ class StoryManager(biscuit.Manager):
         # Push changes and reset touch
         for pf in self.current_story.storyboard:
             pf.untouch()
-            addr = self.pf_to_addr(pf)
-            self.hc.set_light(addr, self.RED_IDX, pf.red)
-            self.hc.set_light(addr, self.GREEN_IDX, pf.green)
-            self.hc.set_light(addr, self.BLUE_IDX, pf.blue)
-            self.hc.set_light(addr, self.WHITE_IDX, pf.white)
-            self.hc.set_light(addr, self.UV_IDX, pf.uv)
+            idx = self.hc.addresses.index(pf.real_address)
+            self.hc.set_light(idx, self.RED_IDX, pf.red)
+            self.hc.set_light(idx, self.GREEN_IDX, pf.green)
+            self.hc.set_light(idx, self.BLUE_IDX, pf.blue)
+            self.hc.set_light(idx, self.WHITE_IDX, pf.white)
+            self.hc.set_light(idx, self.UV_IDX, pf.uv)
 
 class Story(object):
     """
