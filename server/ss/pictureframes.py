@@ -3,10 +3,6 @@ import pictureframe
 
 class SSPictureFrame(pictureframe.PictureFrame):
 
-    def __init__(self, address):
-        self.address = address
-        super(SSPictureFrame, self).__init__()
-
     def pattern_hint(self, t, span=0.5):
         on = int(t / (span * 2.0)) % 2 == 0
         self.uv = self.MAX_UV if on else self.MIN_UV
@@ -92,9 +88,9 @@ class BatEatsStars(SSPictureFrame):
         """
         Yellow to purple
         """
-        #TODO
-        pass
-        
+        pf.red = mmath.triangle(t, span, 255, 160)
+        pf.green = mmath.triangle(t, span, 255, 32)
+        pf.blue = mmath.triangle(t, span, 0, 240)
 
 class BatTripsBalls(SSPictureFrame):
     """
