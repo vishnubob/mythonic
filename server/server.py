@@ -11,6 +11,7 @@ import biscuit
 from music import make_looper
 import pictureframe
 
+import ss
 from ss.pictureframes import *
 
 MIDI_CLIENT = 128
@@ -27,8 +28,8 @@ MIDI_TRACKS = [
 ]
 
 ROUTING = {
-    "/dev/ttyUSB0": [0, 1, 2],
-    "/dev/ttyUSB1": []
+    "/dev/ttyUSB0": [1, 2, 3],
+#    "/dev/ttyUSB1": []
 }
 
 PICTURE_FRAMES = [
@@ -54,13 +55,14 @@ def main():
     picture_frames = []
     for tty_dev in ROUTING:
         tty = serial.Serial(tty_dev, baudrate=1000000)
-        for address in ROUTING[tty_dev]:
-            addresses.append(address)
+        for human_address in ROUTING[tty_dev]:
+            real_address = human_address - 1
+            addresses.append(real_address)
             serial_ports.append(tty)
-        picture_frame = [pf for pf in PICTURE_FRAMES if pf.address == address][0]
-        picture_frames.append(picture_frame)
-    hc = HardwareChain(serial_ports, addresses)
-    manager = SSManager(hc, pictureframe.Storyboard(picture_frames), looper)
+            picture_frame = [pf for pf in PICTURE_FRAMES if pf.real_address == real_address][0]
+            picture_frames.append(picture_frame)
+    hc = biscuit.HardwareChain(serial_ports, addresses)
+    manager = ss.SSManager(hc, pictureframe.Storyboard(picture_frames), looper)
     manager.run()
 
 if __name__ == '__main__':
