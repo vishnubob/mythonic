@@ -1,4 +1,5 @@
 import colorsys
+import random
 import time
 
 import mmath
@@ -81,7 +82,9 @@ class PictureFrame(object):
     MAX_UV = 0xff
     MIN_UV = 0x0
 
-    def __init__(self):
+    def __init__(self, human_address):
+        self.human_address = human_address
+        self.fade_origins = {}
         self.red = self.MIN_RED
         self.green = self.MIN_GREEN
         self.blue = self.MIN_BLUE
@@ -95,12 +98,16 @@ class PictureFrame(object):
         """
         Creates a property instance for the given color
         providing bound checking and history recording.
+
+        It also sets the corresponding value in fade_origins,
+        keyed.
         """
         color_attr = "_" + color
         def set_color(self, intensity):
             if intensity > maximum or intensity < minimum:
                 raise ValueError(color + " intensity of " + str(intensity) + " is out of bounds.")
             setattr(self, color_attr, intensity)
+            self.fade_origins[color] = intensity
         return property(lambda self: getattr(self, color_attr), set_color)
 
     red = color_property("red", MIN_RED, MAX_RED)
@@ -108,6 +115,10 @@ class PictureFrame(object):
     blue = color_property("blue", MIN_BLUE, MAX_BLUE)
     white = color_property("white", MIN_WHITE, MAX_WHITE)
     uv = color_property("uv", MIN_UV, MAX_UV)
+
+    @property
+    def real_address(self):
+        return self.human_address - 1
 
     def touch(self):
         self.touch_history.append(time.time())
@@ -141,6 +152,13 @@ class PictureFrame(object):
         self.hsv = (hue, saturation, value)
 
     @property
+    def hsv_fade_origin(self):
+        origin_red = self.fade_origins["red"] / float(self.MAX_RED)
+        origin_green = self.fade_origins["green"] / float(self.MAX_GREEN)
+        origin_blue = self.fade_origins["blue"] / float(self.MAX_BLUE)
+        return colorsys.rgb_to_hsv(origin_red, origin_green, origin_blue)
+
+    @property
     def hsv(self):
         red = max(self.MIN_RED, self.red / float(self.MAX_RED))
         green = max(self.MIN_GREEN, self.green / float(self.MAX_GREEN))
@@ -166,6 +184,29 @@ class PictureFrame(object):
         self.brightness = 0
         self.uv = 0
         self.white = self.MIN_WHITE
+
+    def randomize_hsv(self, hue=None, saturation=None, brightness=None):
+        attribs = [hue, saturation, brightness]
+        hsv = [random.random() if x is None else x for x in attribs]
+        self.hsv = tuple(hsv)
+
+    def fade_hsv(self, t, span, hsv):
+        origin_hsv = self.hsv_fade_origin
+        hue = mmath.segment(t, span, origin_hsv[0], hsv[0])
+        saturation = mmath.segment(t, span, origin_hsv[1], hsv[1])
+        brightness = mmath.segment(t, span, origin_hsv[2], hsv[2])
+        rgb = colorsys.hsv_to_rgb(hue, saturation, brightness)
+        self._red = int(rgb[0] * self.MAX_RED)
+        self._green = int(rgb[1] * self.MAX_GREEN)
+        self._blue = int(rgb[2] * self.MAX_BLUE)
+
+    def fade_rgb(self, t, span, red=None, green=None, blue=None):
+        if red is not None:
+            self._red = mmath.segment(t, span, self.fade_origins["red"], red)
+        if green is not None:
+            self._green = mmath.segment(t, span, self.fade_origins["green"], green)
+        if blue is not None:
+            self._blue = mmath.segment(t, span, self.fade_origins["blue"], blue)
 
     def fadeout(self):#, t, span, original_values):
         self.red = max(self.red - 1, self.MIN_RED)
