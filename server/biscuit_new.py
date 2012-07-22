@@ -29,12 +29,15 @@ class FrameLights(object):
         return iter(self.pages[self.page_idx])
 
     def go(self):
-        if self.dirty():
+        # THOERY: By always refreshing the lights,
+        #         we might be able to re-write missed
+        #         light messages
+        if True or self.dirty():
             self.hc.send_light_data(self.address, self)
         self.flip()
 
 class FrameTouch(object):
-    def __init__(self, address, hc, quiescent_length=10, refresh_length=.3):
+    def __init__(self, address, hc, quiescent_length=10, refresh_length=.3, trigger_threshold=2):
         self.address = address
         self.quiescent_length = quiescent_length
         self.hc = hc
@@ -43,6 +46,8 @@ class FrameTouch(object):
         self.last_refresh = 0
         self.touch_ts = 0
         self.idx = 0
+        self.trigger_count = 0
+        self.trigger_threshold = trigger_threshold
 
     def go(self):
         if self.is_quiescent():
@@ -50,10 +55,15 @@ class FrameTouch(object):
         self.last_refresh = time.time()
         if self.hc.get_touch(self.address):
             self.set_trigger()
+        else:
+            self.trigger_count = 0
 
     def set_trigger(self):
-        self.touch_trigger = True
-        self.touch_ts = time.time()
+        self.trigger_count += 1
+        if self.trigger_count >= self.trigger_threshold:
+            self.trigger_count = 0
+            self.touch_trigger = True
+            self.touch_ts = time.time()
 
     def is_quiescent(self):
         now = time.time()
@@ -99,9 +109,11 @@ class HardwareChain(object):
     def refresh(self):
         light_data = self.light_frames[self.frame_idx]
         light_data.go()
+        # THOERY: last box is working on setting up the lights
+        #           move on to the next box for touch
+        self.frame_idx = (self.frame_idx + 1) % self.length
         touch_data = self.touch_frames[self.frame_idx]
         touch_data.go()
-        self.frame_idx = (self.frame_idx + 1) % self.length
 
     def beacon(self, address):
         cmd = 0x80 | ord('B')
@@ -111,8 +123,8 @@ class HardwareChain(object):
         port.write(chr(addr))
 
     def send_light_data(self, address, light_data):
-        print "LIGHT", address, list(light_data)
-        print "\r"
+        #print "LIGHT", address, list(light_data)
+        #print "\r"
         cmd = 0x80 | ord('L')
         port = self.ports[address]
         port.write(chr(cmd))
@@ -130,8 +142,8 @@ class HardwareChain(object):
         time.sleep(self.write_delay)
 
     def get_touch(self, address):
-        print "GET TOUCH", address
-        print "\r"
+        #print "GET TOUCH", address
+        #print "\r"
         cmd = 0x80 | ord('T')
         port = self.ports[address]
         port.write(chr(cmd))
@@ -141,11 +153,11 @@ class HardwareChain(object):
         if not len(val):
             return False
         val = ord(val)
-        print "TOUCH VAL", val
-        print "\r"
+        #print "TOUCH VAL", val
+        #print "\r"
+        time.sleep(self.write_delay)
         if not val:
             return False
-        time.sleep(self.write_delay * 4)
         return val == 1
 
 class Manager(object):
