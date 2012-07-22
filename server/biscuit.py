@@ -37,7 +37,7 @@ class FrameLights(object):
         self.flip()
 
 class FrameTouch(object):
-    def __init__(self, address, hc, quiescent_length=10, refresh_length=.3, trigger_threshold=2):
+    def __init__(self, address, hc, quiescent_length=10, refresh_length=.25, trigger_threshold=3):
         self.address = address
         self.quiescent_length = quiescent_length
         self.hc = hc

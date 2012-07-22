@@ -10,12 +10,6 @@ import termios
 import biscuit
 import tty
 
-DEFAULTS = {
-    'only_boards': None,
-    'count_boards': None,
-    'write_touch_data': False,
-}
-
 OLD_STDIN = None
 def push_termios():
     global OLD_STDIN
@@ -29,34 +23,31 @@ def pop_termios():
     termios.tcsetattr(fd, termios.TCSAFLUSH, OLD_STDIN)
 
 def get_cli():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(dest="port", nargs=1, help="The port of the RS-485 dongle.")
-    parser.add_argument('-o', '--only', dest="only_boards", help="comma seperated list of boards")
-    parser.add_argument('-c', "--count", type=int, dest="count_boards", help="Count of contiguous boards")
-    parser.add_argument('-d', "--data", dest="write_touch_data", action="store_true", help="Write raw touch data")
-    parser.set_defaults(**DEFAULTS)
-    args = parser.parse_args()
-    args.port = args.port[0]
-    return args
+    port = None
+    ports = []
+    addresses = []
+    try:
+        for arg in sys.argv[1:]:
+            if port == None:
+                port = serial.Serial(arg, baudrate=1000000)
+                continue
+            else:
+                boards = arg.split(',')
+                addresses += [(x - 1) for x in map(int, boards)]
+                ports += [port] * len(boards)
+                port = None
+        if port or not (ports or addresses):
+            print "Invalid number of arguments"
+            raise "WTF"
+    except:
+        print "Usage: %s /dev/port1 1,12,8 [/dev/port2 2,9,6]" % sys.argv[0]
+        sys.exit(-1)
+    return (ports, addresses)
 
 def main():
-    args = get_cli()
-    only_boards = None
-    count_boards = None
-    if args.only_boards and args.count_boards:
-        print "only boards and count are mutually exclusive."
-        sys.exit(-1)
-    port = serial.Serial(args.port, baudrate=1000000, parity=serial.PARITY_EVEN)
-    write_touch_data = args.write_touch_data
-    if args.only_boards:
-        only_boards = args.only_boards
-        only_boards = [int(x) - 1 for x in set(only_boards.split(','))]
-        only_boards.sort()
-        hc = biscuit.HardwareChain(port, max(only_boards), write_delay=.001, only_boards=only_boards)
-    if args.count_boards:
-        count_boards = int(args.count_boards)
-        hc = biscuit.HardwareChain(port, count_boards, write_delay=.001)
-    manager = TestManager(hc, write_touch_data=write_touch_data)
+    (ports, addresses) = get_cli()
+    hc = biscuit.HardwareChain(ports, addresses, write_delay=.005)
+    manager = TestManager(hc)
     try:
         manager.run()
     except:
@@ -64,10 +55,8 @@ def main():
         raise
 
 class TestManager(biscuit.Manager):
-    def __init__(self, hc, write_touch_data=False, *args, **kw):
+    def __init__(self, hc, *args, **kw):
         self.touch_data_f = None
-        if write_touch_data:
-            self.touch_data_f = open("touch_data.txt", 'w')
         super(TestManager, self).__init__(hc, *args, **kw)
 
     def __del__(self):
@@ -97,50 +86,21 @@ class TestManager(biscuit.Manager):
     def report(self, txt):
         print "%s\r" % txt
 
-    def report_touch(self, triggers=None):
-        if not triggers:
-            triggers = self.hc.get_touch_triggers()
-        avgs = self.hc.get_touch_averages()
-        peeks = self.hc.get_touch_peeks()
-        thresholds = self.hc.get_touch_thresholds()
-        msg = ''
-        for (idx, trig) in enumerate(triggers):
-            msg += 'Frame #%d (trigger, avgs, thresholds, peeks)\r\n' % idx
-            for ds in (triggers, avgs, thresholds, peeks):
-                if ds == triggers:
-                    vals = map(str, triggers[idx])
-                else:
-                    vals = [("%.2f" % val) for val in ds[idx]]
-                vals = str.join(', ', vals)
-                msg += vals + '\r\n'
-            msg += '\r\n'
-        self.report(msg)
-
-    def write_touch_data(self):
-        #vals = self.hc.get_touch_peeks()
-        vals = self.hc.get_touch_averages()
-        vals = [item for sublist in vals for item in sublist]
-        vals = str.join(', ', map(str, [time.time()] + vals)) + '\n'
-        self.touch_data_f.write(vals)
-
     def think(self):
         triggers = self.hc.get_touch_triggers()
-        if self.touch_data_f:
-            self.write_touch_data()
         touch_flag = None
-        for (idx, vals) in enumerate(triggers):
-            for val in vals:
-                if val:
-                    touch_flag = idx
-                    break
+        for (idx, trigger) in enumerate(triggers):
+            if trigger:
+                touch_flag = idx
+                break
 
         if touch_flag != None:
+            self.report(touch_flag)
             self.report("TOUCH!")
-            self.report_touch(triggers)
             self.hc.set_light(touch_flag, 4, 0xff)
-            for x in range(5):
+            for x in range(10):
                 self.cycle()
-            time.sleep(.1)
+            time.sleep(.5)
             self.hc.set_light(touch_flag, 4, 0)
 
         ch = self.readch()
@@ -182,8 +142,6 @@ class TestManager(biscuit.Manager):
                     self.cycle()
                 time.sleep(.5)
                 self.hc.set_light(self.address, ch, 0)
-        elif ch == 't':
-            self.report_touch()
         elif ch == 'q':
             pop_termios()
             self.report("quitting")
