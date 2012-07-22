@@ -2,6 +2,7 @@
 
 import sys
 import time
+import random
 
 class FrameLights(object):
     def __init__(self, address, hc):
@@ -37,7 +38,7 @@ class FrameLights(object):
         self.flip()
 
 class FrameTouch(object):
-    def __init__(self, address, hc, quiescent_length=10, refresh_length=.25, trigger_threshold=3):
+    def __init__(self, address, hc, quiescent_length=10, refresh_length=.20, trigger_threshold=3):
         self.address = address
         self.quiescent_length = quiescent_length
         self.hc = hc

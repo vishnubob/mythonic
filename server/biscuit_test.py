@@ -8,6 +8,7 @@ import select
 import serial
 import termios
 import biscuit
+import random
 import tty
 
 OLD_STDIN = None
@@ -93,6 +94,11 @@ class TestManager(biscuit.Manager):
             if trigger:
                 touch_flag = idx
                 break
+
+        #for idx in range(self.hc.length):
+        #    for x in range(6):
+        #        val = random.randint(0, 256)
+        #        self.hc.set_light(idx, x, val)
 
         if touch_flag != None:
             self.report(touch_flag)
