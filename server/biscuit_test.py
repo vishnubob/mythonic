@@ -47,7 +47,9 @@ def get_cli():
 
 def main():
     (ports, addresses) = get_cli()
-    hc = biscuit.HardwareChain(ports, addresses, write_delay=.005)
+    #wd = .005
+    wd = .0001
+    hc = biscuit.HardwareChain(ports, addresses, write_delay=wd)
     manager = TestManager(hc)
     try:
         manager.run()
@@ -144,7 +146,7 @@ class TestManager(biscuit.Manager):
                 if ch == 1:
                     continue
                 self.hc.set_light(self.address, ch, 0xff)
-                for x in range(10):
+                for x in range(20):
                     self.cycle()
                 time.sleep(.5)
                 self.hc.set_light(self.address, ch, 0)

@@ -305,8 +305,10 @@ void loop(void)
                 } else
                 if (serial_command == TOUCH_COMMAND)
                 {
+                    uint8_t val = 0;
+                    val = (board_addr << 1) | (uint8_t)touchset.trigger();
                     enable_serial_output();
-                    Serial.write((uint8_t)touchset.trigger());
+                    Serial.write(val);
                     disable_serial_output();
                     serial_state = WAIT_FOR_COMMAND_STATE;
                 } else

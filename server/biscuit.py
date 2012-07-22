@@ -38,7 +38,7 @@ class FrameLights(object):
         self.flip()
 
 class FrameTouch(object):
-    def __init__(self, address, hc, quiescent_length=10, refresh_length=.20, trigger_threshold=3):
+    def __init__(self, address, hc, quiescent_length=10, refresh_length=.10, trigger_threshold=1):
         self.address = address
         self.quiescent_length = quiescent_length
         self.hc = hc
@@ -57,7 +57,7 @@ class FrameTouch(object):
         if self.hc.get_touch(self.address):
             self.set_trigger()
         else:
-            self.trigger_count = 0
+            self.trigger_count = max(self.trigger_count - 1, 0)
 
     def set_trigger(self):
         self.trigger_count += 1
@@ -79,7 +79,7 @@ class FrameTouch(object):
         return False
 
 class HardwareChain(object):
-    def __init__(self, ports, addresses, write_delay=.01, timeout_factor=5):
+    def __init__(self, ports, addresses, write_delay=.01, timeout_factor=8):
         self.write_delay = write_delay
         self.timeout_factor = timeout_factor
         self.addresses = addresses
@@ -143,8 +143,7 @@ class HardwareChain(object):
         time.sleep(self.write_delay)
 
     def get_touch(self, address):
-        #print "GET TOUCH", address
-        #print "\r"
+        #print "GET_TOUCH", address, '\r'
         cmd = 0x80 | ord('T')
         port = self.ports[address]
         port.write(chr(cmd))
@@ -153,13 +152,15 @@ class HardwareChain(object):
         val = port.read(1)
         if not len(val):
             return False
-        val = ord(val)
-        #print "TOUCH VAL", val
-        #print "\r"
         time.sleep(self.write_delay)
-        if not val:
+        val = ord(val)
+        origval = val
+        truefalse = val & 0x1
+        val >>= 1
+        #print "WOOP", bin(origval), self.frame_idx, address, bool(truefalse), bin(val) + "\r"
+        if val != address:
             return False
-        return val == 1
+        return truefalse == 1
 
 class Manager(object):
     def __init__(self, hc):
