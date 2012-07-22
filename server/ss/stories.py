@@ -99,11 +99,11 @@ class StartupTest(manager.Story):
     def plot(self, t):
         for idx, pf in enumerate(self.storyboard):
             pf.blackout()
-            if pf.address < t:
+            if pf.real_address < t:
                 pf.blue = pf.MAX_BLUE
             else:
                 pf.red = pf.MAX_RED
-        return t < max([pf.address for pf in self.storyboard])
+        return self.storyboard.touched
 
 class Instrument(manager.MusicalStory):
 
@@ -134,7 +134,7 @@ class Instrument(manager.MusicalStory):
 
     def deactivate(self):
         for idx, track in enumerate(self.looper.tracks):
-            self.looper.stop(idx)
+            self.stop(idx)
         super(Instrument, self).deactivate()
 
 class Narative(manager.MusicalStory):
@@ -145,6 +145,8 @@ class Narative(manager.MusicalStory):
         super(Narative, self).__init__(storyboard, looper)
 
     def plot(self, t):
+        if len(self.foci) == 0:
+            return False
         story_length = len(self.foci) * self.time_per_frame
         focus_idx = int(mmath.segment(t, story_length, 0, len(self.foci)))
         focus = self.storyboard[focus_idx]
