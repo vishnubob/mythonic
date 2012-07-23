@@ -190,6 +190,7 @@ class PictureFrame(object):
         hsv = [random.random() if x is None else x for x in attribs]
         self.hsv = tuple(hsv)
 
+    #XXX: Not sure if this works
     def fade_hsv(self, t, span, hsv):
         origin_hsv = self.hsv_fade_origin
         hue = mmath.segment(t, span, origin_hsv[0], hsv[0])
@@ -200,6 +201,7 @@ class PictureFrame(object):
         self._green = int(rgb[1] * self.MAX_GREEN)
         self._blue = int(rgb[2] * self.MAX_BLUE)
 
+    #XXX: Not sure if this works
     def fade_rgb(self, t, span, red=None, green=None, blue=None):
         if red is not None:
             self._red = mmath.segment(t, span, self.fade_origins["red"], red)
