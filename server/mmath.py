@@ -1,5 +1,10 @@
 import math
 
+def travel(t, span, start=0, end=1):
+    increment = (end - start) / float(span)
+    unbound = start + (t * increment)
+    return min(unbound, end) if end > start else max(unbound, end)
+
 def segment(t, span, start=0, end=1):
     increment = (end - start) / float(span)
     return ((t * increment - start) % (end - start)) + start

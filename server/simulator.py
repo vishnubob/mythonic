@@ -8,6 +8,7 @@ import pygame
 
 import biscuit
 import manager
+import mmath
 import pictureframe
 import server
 import ss
@@ -92,11 +93,15 @@ class TestStory(manager.Story):
     def transition(self, t):
         for pf in self.storyboard:
             pf.randomize_hsv()
+            pf.red = 255
+            pf.blue = 255
+            pf.green = 0
 
     def plot(self, t):
         for pf in self.storyboard:
-            pass
-            #pf.fade_hsv(t, 10, (0.67, 0.5, 0.5))
+            pf.red = mmath.travel(t, 5, 255, 160)
+            pf.green = mmath.travel(t, 5, 255, 32)
+            pf.blue = mmath.travel(t, 5, 0, 240)
         return True
 
 if __name__ == "__main__":

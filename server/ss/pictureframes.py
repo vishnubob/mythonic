@@ -88,9 +88,9 @@ class BatEatsStars(SSPictureFrame):
         """
         Yellow to purple
         """
-        pf.red = mmath.triangle(t, span, 255, 160)
-        pf.green = mmath.triangle(t, span, 255, 32)
-        pf.blue = mmath.triangle(t, span, 0, 240)
+        pf.red = mmath.travel(t, span, 255, 160)
+        pf.green = mmath.travel(t, span, 255, 32)
+        pf.blue = mmath.travel(t, span, 0, 240)
 
 class BatTripsBalls(SSPictureFrame):
     """
@@ -101,7 +101,7 @@ class BatTripsBalls(SSPictureFrame):
         """
         Really fucking trippy
         """
-        pass
+        pf.randomize_hsv()
 
 class RedIsSad(SSPictureFrame):
     """
@@ -117,12 +117,9 @@ class PlanetTapsShoulder(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        """
-        TODO: teal
-        """
         pf.red = 0
-        pf.green = 193
-        pf.blue = 255
+        pf.green = 128
+        pf.blue = 128
 
 class PlanetHangout(SSPictureFrame):
     """
@@ -130,10 +127,7 @@ class PlanetHangout(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        """
-        TODO: fuschia
-        """
         pf.red = 255
-        pf.green = 192
-        pf.blue = 203
+        pf.green = 0
+        pf.blue = 255
 
