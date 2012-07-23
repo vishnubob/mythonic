@@ -33,12 +33,13 @@ class FrameLights(object):
         # THOERY: By always refreshing the lights,
         #         we might be able to re-write missed
         #         light messages
-        if True or self.dirty():
+        #if True or self.dirty():
+        if self.dirty():
             self.hc.send_light_data(self.address, self)
         self.flip()
 
 class FrameTouch(object):
-    def __init__(self, address, hc, quiescent_length=10, refresh_length=.10, trigger_threshold=1):
+    def __init__(self, address, hc, quiescent_length=10, refresh_length=.20, trigger_threshold=3):
         self.address = address
         self.quiescent_length = quiescent_length
         self.hc = hc
@@ -79,8 +80,9 @@ class FrameTouch(object):
         return False
 
 class HardwareChain(object):
-    def __init__(self, ports, addresses, write_delay=.01, timeout_factor=8):
+    def __init__(self, ports, addresses, write_delay=.1, timeout_factor=50):
         self.write_delay = write_delay
+        self.write_delay = .01
         self.timeout_factor = timeout_factor
         self.addresses = addresses
         self.ports = {}
@@ -143,7 +145,7 @@ class HardwareChain(object):
         time.sleep(self.write_delay)
 
     def get_touch(self, address):
-        #print "GET_TOUCH", address, '\r'
+        print "GET_TOUCH", address, '\r'
         cmd = 0x80 | ord('T')
         port = self.ports[address]
         port.write(chr(cmd))
@@ -157,7 +159,7 @@ class HardwareChain(object):
         origval = val
         truefalse = val & 0x1
         val >>= 1
-        #print "WOOP", bin(origval), self.frame_idx, address, bool(truefalse), bin(val) + "\r"
+        print "WOOP", "ADDR", address, "ORIG", bin(origval), "FLAG", bool(truefalse), "REM", val, "\r"
         if val != address:
             return False
         return truefalse == 1
