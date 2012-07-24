@@ -84,7 +84,6 @@ class Story(object):
             if old_idx > self.stage_idx:
                 self.looped_count += 1
                 self.finished = True
-                print "Finished!"
             self.stage_started_at = None
 
     def setup(self, t):

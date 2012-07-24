@@ -138,7 +138,6 @@ class PictureFrame(object):
 
     def deactivate(self):
         self._active = False
-        self.blackout()
 
     active = property(lambda self: self._active)
 
