@@ -67,6 +67,8 @@ class BatFliesAway(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
+        pf.red = 0
+        pf.green = 0
         pf.blue = pf.MAX_BLUE
 
 class BatTakesOff(SSPictureFrame):
