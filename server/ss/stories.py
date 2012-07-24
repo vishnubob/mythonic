@@ -103,7 +103,7 @@ class StartupTest(manager.Story):
                 pf.blue = pf.MAX_BLUE
             else:
                 pf.red = pf.MAX_RED
-        return self.storyboard.touched
+        return not self.storyboard.touched
 
 class Instrument(manager.MusicalStory):
 
