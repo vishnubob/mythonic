@@ -92,10 +92,10 @@ class Story(object):
 
         Return True if the transition is still in progress.
 
-        Default is to fade out by an increment of 1 each call
+        Blackout all boxes
         """
-        work_left = [pf.fadeout() for pf in self.storyboard]
-        return reduce(lambda a, b: a or b, work_left)
+        for pf in self.storyboard:
+            pf.blackout()
 
     def plot(self, t):
         """
@@ -103,13 +103,11 @@ class Story(object):
 
         Return True if plot is ongoing
         """
-        return False
 
     def teardown(self, t):
         """
         Just like setup and plot, but happens after
         """
-        return False
 
 class MusicalStory(Story):
 

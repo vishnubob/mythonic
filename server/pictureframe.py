@@ -92,10 +92,7 @@ class PictureFrame(object):
         self._touched = False
         self._active = False
         self.touch_history = []
-        # Fade stuff. Totaly hack, should be less manual
-        self.last_rgb_fade = None
-        self.rgb_fade_origin = None
-        self.last_rgb_target = None
+        self.fades = {}
 
     def color_property(color, minimum, maximum):
         """
@@ -191,14 +188,59 @@ class PictureFrame(object):
         hsv = [random.random() if x is None else x for x in attribs]
         self.hsv = tuple(hsv)
 
+    def fade_color(self, t, span, color, target):
+        fade = Fade(span, getattr(self, color), target)
+        if color not in self.fades or fade != self.fades[color]:
+            self.fades[color] = fade
+        else:
+            fade = self.fades[color]
+        setattr(self, color, fade.calc(t))
+        return getattr(self, color) != target
+
+    def fade_red(self, t, span, target):
+        return self.fade_color(t, span, "red", target)
+
+    def fade_green(self, t, span, target):
+        return self.fade_color(t, span, "green", target)
+
+    def fade_blue(self, t, span, target):
+        return self.fade_color(t, span, "blue", target)
+
     def fade_rgb(self, t, span, red, green, blue):
-        target = (red, green, blue)
-        if self.last_rgb_fade != self.rgb or self.last_rgb_target != target:
-            self.rgb_fade_origin = self.rgb
-            self.last_rgb_target = target
-        origin = self.rgb_fade_origin
-        self.red = mmath.travel(t, span, origin[0], red)
-        self.green = mmath.travel(t, span, origin[1], green)
-        self.blue = mmath.travel(t, span, origin[2], blue)
-        self.last_rgb_fade = self.rgb
-        return self.rgb != (red, green, blue)
+        work_left = False
+        work_left |= self.fade_red(t, span, red)
+        work_left |= self.fade_green(t, span, green)
+        work_left |= self.fade_blue(t, span, blue)
+        return work_left
+
+    def fade_uv(self, t, span, target):
+        return self.fade_color(t, span, "uv", target)
+
+    def fade_white(self, t, span, target):
+        return self.fade_color(t, span, "white", target)
+
+    def fadeout(self, t, span):
+        work_left = False
+        work_left |= self.fade_rgb(t, span, self.MIN_RED, self.MIN_GREEN, self.MIN_BLUE)
+        work_left |= self.fade_uv(t, span, self.MIN_UV)
+        work_left |= self.fade_white(t, span, self.MIN_WHITE)
+        return work_left
+
+class Fade(object):
+    def __init__(self, span, original_value, target_value):
+        self.span = span
+        self.original_value = original_value
+        self.target_value = target_value
+        self.last_value = original_value
+
+    def calc(self, t):
+        assert(self.span == 5)
+        value = mmath.travel(t, self.span, self.original_value, self.target_value)
+        self.last_value = value
+        return value
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __eq__(self, other):
+        return other.span == self.span and other.target_value == self.target_value
