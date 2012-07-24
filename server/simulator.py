@@ -91,19 +91,23 @@ class PyGManager(ss.SSManager):
         super(PyGManager, self).think()
 
 class TestStory(manager.Story):
-    def transition(self, t):
+    def setup(self, t):
+        work_left = False
         for pf in self.storyboard:
-            pf.randomize_hsv()
-            pf.red = 255
-            pf.blue = 255
-            pf.green = 0
+            work_left |= pf.fade_rgb(t, 5, 255, 255, 0)
+        return work_left
 
     def plot(self, t):
+        work_left = False
         for pf in self.storyboard:
-            pf.red = mmath.travel(t, 5, 255, 160)
-            pf.green = mmath.travel(t, 5, 255, 32)
-            pf.blue = mmath.travel(t, 5, 0, 240)
-        return True
+            work_left |= pf.fade_rgb(t, 5, 160, 32, 240)
+        return work_left
+ 
+    def teardown(self, t):
+        work_left = False
+        for pf in self.storyboard:
+            work_left |= pf.fadeout(t, 5)
+        return work_left
 
 if __name__ == "__main__":
     main()
