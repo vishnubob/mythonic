@@ -36,9 +36,7 @@ class StoryManager(biscuit.Manager):
         # Handle story selection/deselection
         next_story = self.select_story()
         if next_story != self.current_story:
-            if self.current_story is not None:
-                self.current_story.deactivate()
-            next_story.activate()
+            next_story.reset()
             self.current_story = next_story
             print "Story changed to", str(next_story.__class__.__name__)
         # Advance the story
@@ -63,33 +61,33 @@ class Story(object):
 
     def __init__(self, storyboard):
         self.storyboard = storyboard
-        self.transitioned = False
-        self.finished = False
-        self.transition_started_at = None
-        self.plot_started_at = None
+        self.stages = [self.setup, self.plot, self.teardown]
+        self.reset()
+
+    def reset(self):
+        self.stage_idx = 0
+        self.stage_started_at = None
         self.looped_count = 0
 
     def think(self):
         """
-        Manage effects
+        Manage effects/stage
         """
-        if not self.transitioned:
-            if self.transition_started_at is None:
-                self.transition_started_at = time.time()
-            t = time.time() - self.transition_started_at
-            self.transitioned = not self.transition(t)
-        else:
-            if self.plot_started_at is None:
-                self.plot_started_at = time.time()
-            t = time.time() - self.plot_started_at
-            if self.plot(t):
-                self.finished = False
-            else:
-                self.finished = True
-                self.plot_started_at = None
+        self.finished = False
+        stage = self.stages[self.stage_idx]
+        if self.stage_started_at is None:
+            self.stage_started_at = time.time()
+        t = time.time() - self.stage_started_at
+        if not stage(t):
+            old_idx = self.stage_idx
+            self.stage_idx = (self.stage_idx + 1) % len(self.stages)
+            if old_idx > self.stage_idx:
                 self.looped_count += 1
+                self.finished = True
+                print "Finished!"
+            self.stage_started_at = None
 
-    def transition(self, t):
+    def setup(self, t):
         """
         Transition into this story
 
@@ -108,18 +106,11 @@ class Story(object):
         """
         return False
 
-    def deactivate(self):
-        self._active = False
-        self.finished = False
-        self.transitioned = False
-        self.transition_started_at = None
-        self.plot_started_at = None
-        self.looped_count = 0
-
-    def activate(self):
-        self._active = True
-
-    active = property(lambda self: self._active)
+    def teardown(self, t):
+        """
+        Just like setup and plot, but happens after
+        """
+        return False
 
 class MusicalStory(Story):
 
@@ -128,9 +119,7 @@ class MusicalStory(Story):
         super(MusicalStory, self).__init__(storyboard)
 
     def play(self, track_idx):
-        if self.looper is not None:
-            self.looper.ensure_playing(track_idx)
+        self.looper.ensure_playing(track_idx)
 
     def stop(self, track_idx):
-        if self.looper is not None:
-            self.looper.ensure_stopped(track_idx)
+        self.looper.ensure_stopped(track_idx)

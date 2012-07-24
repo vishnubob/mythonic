@@ -84,7 +84,7 @@ class Dice(manager.Story):
         pf.hsv = (random.random(), saturation, 1)
         pf.uv = pf.MAX_UV if random.random() >= 0.5 else pf.MIN_UV
 
-    def transition(self, t):
+    def setup(self, t):
         for pf in self.storyboard:
             self.randomize(pf)
 
@@ -107,10 +107,12 @@ class StartupTest(manager.Story):
 
 class Instrument(manager.MusicalStory):
 
-    def transition(self, t):
+    def setup(self, t):
         for pf in self.storyboard:
             pf.blackout()
             pf.deactivate()
+            for track in pf.drum_tracks:
+                self.play(track)
 
     def plot(self, since_start):
         """
@@ -120,22 +122,22 @@ class Instrument(manager.MusicalStory):
             t = since_start + idx
             pf.blackout()
             if pf.active:
-                if idx < len(self.looper.tracks):
-                    self.play(idx)
+                for track in pf.lead_tracks:
+                    self.play(track)
                 pf.cycle_hue(t, 20, 1, 0.5)
                 pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
                     pf.pattern_hint(t)
             else:
-                if idx < len(self.looper.tracks):
-                    self.stop(idx)
+                for track in pf.lead_tracks:
+                    self.stop(track)
                 pf.white = pf.MAX_WHITE / 3
         return True
 
-    def deactivate(self):
+    def teardown(self):
         for idx, track in enumerate(self.looper.tracks):
             self.stop(idx)
-        super(Instrument, self).deactivate()
+        return super(Instrument, self).teardown()
 
 class Narative(manager.MusicalStory):
 
@@ -143,6 +145,12 @@ class Narative(manager.MusicalStory):
         self.foci = foci
         self.time_per_frame = time_per_frame
         super(Narative, self).__init__(storyboard, looper)
+
+    def setup(self, t):
+        for pf in self.storyboard:
+            for track in pf.drum_tracks:
+                self.play(track)
+        return super(Narative, self).setup(t)
 
     def plot(self, t):
         if len(self.foci) == 0:
