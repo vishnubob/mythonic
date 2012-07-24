@@ -23,6 +23,7 @@ def main():
     looper = make_looper(server.MIDI_TRACKS, server.MIDI_CLIENT, server.MIDI_PORT)
     picture_frames = server.PICTURE_FRAMES
     hc = PyGHardwareChain([port] * len(picture_frames), [pf.real_address for pf in picture_frames])
+    server.load_tracks(picture_frames)
     manager = PyGManager(hc, pictureframe.Storyboard(picture_frames), looper)
     manager.run()
 
@@ -31,7 +32,7 @@ class PyGHardwareChain(biscuit.HardwareChain):
     def __init__(self, ports, addresses):
         super(PyGHardwareChain, self).__init__(ports, addresses)
         length = len(self.addresses)
-        self._touched = [[False] * 4] * length
+        self._touched = [False] * length
         self.screen = pygame.display.set_mode((BOX_WIDTH * 3, length * BOX_HEIGHT))
         pygame.display.flip()
 
@@ -64,7 +65,7 @@ class PyGHardwareChain(biscuit.HardwareChain):
 
     def get_touch_triggers(self):
         touched = self._touched
-        self._touched = [[False] * 4 for i in range(len(self.addresses))]
+        self._touched = [False] * len(self.addresses)
         return touched
 
 class PyGManager(ss.SSManager):
@@ -86,7 +87,7 @@ class PyGManager(ss.SSManager):
                 sys.exit(0)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 addr = self.pos_to_addr(event.pos)
-                self.hc._touched[addr][0] = True
+                self.hc._touched[addr] = True
         super(PyGManager, self).think()
 
 class TestStory(manager.Story):
