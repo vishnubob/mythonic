@@ -123,7 +123,7 @@ class Instrument(manager.MusicalStory):
                     self.stop(track)
             print self.now_playing
 
-def teardown(self):
+    def teardown(self):
         for idx, track in enumerate(self.looper.tracks):
             self.stop(idx)
         return super(Instrument, self).teardown()
