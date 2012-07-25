@@ -17,7 +17,7 @@ class SSManager(manager.StoryManager):
         self.startup_test = StartupTest(storyboard)
         self.dice = Dice(storyboard)
         self.blackout_game = BlackoutGame(storyboard)
-        time_per_frame = 20
+        time_per_frame = 5
         self.naratives = [
             BatAdventure(storyboard, looper, time_per_frame),
             TreeArt(storyboard, looper, time_per_frame),
@@ -140,6 +140,8 @@ class Narative(manager.MusicalStory):
             return False
         story_length = len(self.foci) * self.time_per_frame
         focus_idx = int(mmath.travel(t, story_length, 0, len(self.foci)))
+        if focus_idx >= len(self.foci):
+            return False
         focus = self.foci[focus_idx]
         for pf in self.storyboard:
             if pf == focus:
@@ -148,7 +150,7 @@ class Narative(manager.MusicalStory):
             focus.mood(pf, t, self.time_per_frame)
         focus.blackout()
         focus.white = focus.MAX_WHITE
-        return t < story_length
+        return True
 
 class TreeArt(Narative):
 
