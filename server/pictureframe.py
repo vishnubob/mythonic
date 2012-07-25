@@ -40,10 +40,14 @@ class Storyboard(list):
         """
         Number of seconds since creation we have gone without a touch
         """
+        return time.time() - self.untouched_since
+
+    @property
+    def untouched_since(self):
         most_recent = self.initialized_at
         for history in [pf.touch_history for pf in self]:
             most_recent = max(history + [most_recent])
-        return time.time() - most_recent
+        return most_recent
 
     @property
     def pattern_complete(self):

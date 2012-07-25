@@ -14,7 +14,7 @@ import pictureframe
 import ss
 from ss.pictureframes import *
 
-MIDI_CLIENT = 128
+MIDI_CLIENT = 14
 MIDI_PORT = 0
 
 MIDI_TRACKS = [

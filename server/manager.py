@@ -68,6 +68,7 @@ class Story(object):
         self.stage_idx = 0
         self.stage_started_at = None
         self.looped_count = 0
+        self.new_stage = True
 
     def think(self):
         """
@@ -75,16 +76,16 @@ class Story(object):
         """
         self.finished = False
         stage = self.stages[self.stage_idx]
-        if self.stage_started_at is None:
+        if self.new_stage:
             self.stage_started_at = time.time()
-        t = time.time() - self.stage_started_at
-        if not stage(t):
+            self.new_stage = False
+        if not stage(time.time() - self.stage_started_at):
             old_idx = self.stage_idx
             self.stage_idx = (self.stage_idx + 1) % len(self.stages)
             if old_idx > self.stage_idx:
                 self.looped_count += 1
                 self.finished = True
-            self.stage_started_at = None
+                self.new_stage = False
 
     def setup(self, t):
         """

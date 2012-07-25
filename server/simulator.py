@@ -19,8 +19,10 @@ BOX_HEIGHT = 50
 BOX_WIDTH = 100
 
 def main():
+    midi_client = 14
+    midi_port = 0
     port = serial.Serial(None, baudrate=1000000, bytesize=8, parity='N', stopbits=1, timeout=None, xonxoff=False, rtscts=False, dsrdtr=False)
-    looper = make_looper(server.MIDI_TRACKS, server.MIDI_CLIENT, server.MIDI_PORT)
+    looper = make_looper(server.MIDI_TRACKS, midi_client, midi_port)
     picture_frames = server.PICTURE_FRAMES
     hc = PyGHardwareChain([port] * len(picture_frames), [pf.real_address for pf in picture_frames])
     server.load_tracks(picture_frames)
@@ -78,9 +80,9 @@ class PyGManager(ss.SSManager):
     def pos_to_addr(self, pos):
          return int(pos[1]/float(BOX_HEIGHT))
 
-    def select_story(self):
-        return self.test_story
-
+#    def select_story(self):
+#        return self.test_story
+#
     def think(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -94,7 +96,7 @@ class TestStory(manager.Story):
     def setup(self, t):
         work_left = False
         for pf in self.storyboard:
-            work_left |= pf.fade_rgb(t, 5, 255, 255, 0)
+            work_left |= pf.fade_blue(t, 5, 255) #pf.fade_rgb(t, 5, 255, 255, 0)
         return work_left
 
     def plot(self, t):
@@ -102,7 +104,7 @@ class TestStory(manager.Story):
         for pf in self.storyboard:
             work_left |= pf.fade_rgb(t, 5, 160, 32, 240)
         return work_left
- 
+
     def teardown(self, t):
         work_left = False
         for pf in self.storyboard:
