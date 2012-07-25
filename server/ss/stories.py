@@ -35,7 +35,6 @@ class SSManager(manager.StoryManager):
             return self.instrument
         if isinstance(current, Instrument):
             untouched_since = max(current.stage_started_at, self.storyboard.untouched_since)
-            print time.time() - untouched_since
             if time.time() - untouched_since >= self.SCREENSAVER_TIMEOUT:
                return self.screensaver
             if self.storyboard.pattern_complete:
