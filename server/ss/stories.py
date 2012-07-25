@@ -28,6 +28,28 @@ class SSManager(manager.StoryManager):
             storyboard.patterns.append(pictureframe.Pattern(activators, narative))
         super(SSManager, self).__init__(hc, storyboard, looper)
 
+    def select_story(self):
+        current = self.current_story
+        if current is None:
+            return self.startup_test
+            #return self.instrument
+        if isinstance(current, Instrument):
+            untouched_since = max(current.stage_started_at, self.storyboard.untouched_since)
+            if time.time() - untouched_since >= self.SCREENSAVER_TIMEOUT:
+               return self.screensaver
+            if self.storyboard.pattern_complete:
+               return self.storyboard.target_pattern.triggered_story
+        if isinstance(current, Screensaver):
+            if self.storyboard.touched:
+                return self.instrument
+            if current.finished and current.looped_count >= 2:
+                return self.naratives[int(random.random() * len(self.naratives))]
+            return self.screensaver
+        if not current.finished:
+            return current
+        # Default to Instrument
+        return self.instrument
+
 class BlackoutGame(manager.Story):
 
     def __init__(self, storyboard):

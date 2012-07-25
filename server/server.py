@@ -22,8 +22,8 @@ MIDI_PORT = 0
 MIDI_TRACKS = glob.glob(os.path.join("..", "music_raw", "ssb", "*_*.mid"))
 
 ROUTING = {
-    "/dev/ttyUSB0": [1, 2, 3, 4, 5, 6],
-#    "/dev/ttyUSB1": []
+    "/dev/ttyUSB1": range(1, 7),
+    "/dev/ttyUSB0": range(7, 14)
 }
 
 PICTURE_FRAMES = [
