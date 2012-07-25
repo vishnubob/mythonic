@@ -5,7 +5,7 @@ import serial
 import random
 import time
 
-ADDRESSES = range(6)
+ADDRESSES = range(2)
 
 def main():
     tty = serial.Serial("/dev/ttyUSB0", baudrate=1000000)
@@ -21,7 +21,7 @@ class CrashManager(biscuit.Manager):
         for idx, trigger in enumerate(self.hc.get_touch_triggers()):
             if trigger:
                 print "[TOUCH %d] position: %d, address: %d" % (time.time(), idx, self.hc.addresses[idx])
-        if time.time() - self.last_update > 0.1:
+        if time.time() - self.last_update > 0.001:
             for idx, addr in enumerate(ADDRESSES):
                 self.hc.set_light(idx, 0, int(random.random() * 255))
                 self.hc.set_light(idx, 2, int(random.random() * 255))
