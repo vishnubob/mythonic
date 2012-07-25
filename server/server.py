@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import glob
 import math
+import os.path
 import random
 import serial
 
@@ -17,42 +19,16 @@ from ss.pictureframes import *
 MIDI_CLIENT = 14
 MIDI_PORT = 0
 
-MIDI_TRACKS = [
-    "../music_raw/ssb/drum_37.mid",
-    "../music_raw/ssb/drum_38.mid",
-    "../music_raw/ssb/drum_41.mid",
-    "../music_raw/ssb/drum_42.mid",
-    "../music_raw/ssb/drum_43.mid",
-    # range(5,)
-    "../music_raw/ssb/lead_66.mid",
-    "../music_raw/ssb/lead_68.mid",
-    "../music_raw/ssb/lead_71.mid",
-    "../music_raw/ssb/lead_73.mid",
-    "../music_raw/ssb/lead_76.mid",
-    "../music_raw/ssb/lead_77.mid",
-    "../music_raw/ssb/lead_78.mid",
-    "../music_raw/ssb/lead_80.mid",
-    "../music_raw/ssb/lead_81.mid",
-    "../music_raw/ssb/lead_83.mid",
-    "../music_raw/ssb/lead_84.mid",
-    "../music_raw/ssb/lead_85.mid",
-    "../music_raw/ssb/lead_88.mid",
-    "../music_raw/ssb/lead_89.mid",
-    "../music_raw/ssb/lead_90.mid",
-    "../music_raw/ssb/lead_92.mid",
-    "../music_raw/ssb/lead_93.mid",
-    "../music_raw/ssb/lead_95.mid",
-]
+MIDI_TRACKS = glob.glob(os.path.join("..", "music_raw", "ssb", "*_*.mid"))
 
 ROUTING = {
     "/dev/ttyUSB0": [1, 2, 3, 4, 5, 6],
-    "/dev/ttyUSB0": [1, 2],
 #    "/dev/ttyUSB1": []
 }
 
 PICTURE_FRAMES = [
-    RedSitsAlone(1),
-    RedSewsBat(2),
+    RedSitsAlone(1, lead_tracks=[], drum_tracks=["drum_37"]),
+    RedSewsBat(2, lead_tracks=[], drum_tracks=["drum_37"]),
     RedFinishesBat(3),
     RedHugsBat(4),
     RedPlaysWithBat(5),
@@ -79,17 +55,12 @@ def main():
             serial_ports.append(tty)
             picture_frame = [pf for pf in PICTURE_FRAMES if pf.real_address == real_address][0]
             picture_frames.append(picture_frame)
-    load_tracks(picture_frames)
     hc = biscuit.HardwareChain(serial_ports, addresses)
-    manager = ss.SSManager(hc, pictureframe.Storyboard(picture_frames), looper)
+    manager = ss.SSManager(hc, pictureframe.Storyboard(picture_frames, track_listing(MIDI_TRACKS)), looper)
     manager.run()
 
-# XXX: has hard-coded knowlege of MIDI_TRACKS (i.e. lead vs drum indexes)
-def load_tracks(picture_frames):
-    for idx, pf in enumerate(picture_frames):
-        # XXX: HACK ATTACK! Shouldn't be hard coded
-        pf.lead_tracks.append(idx % (len(MIDI_TRACKS) - 5) + 5)
-        pf.drum_tracks.append(idx % 5)
+def track_listing(tracks):
+    return dict((os.path.splitext(os.path.basename(path))[0], idx) for idx, path in enumerate(tracks))
 
 if __name__ == '__main__':
     main()

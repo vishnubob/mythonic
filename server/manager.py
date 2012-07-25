@@ -32,6 +32,7 @@ class StoryManager(biscuit.Manager):
         # Handle touch
         for position, touched in enumerate(self.hc.get_touch_triggers()):
             if touched:
+                print "Touch on position", position
                 self.storyboard[position].touch()
         # Handle story selection/deselection
         next_story = self.select_story()
@@ -80,12 +81,13 @@ class Story(object):
             self.stage_started_at = time.time()
             self.new_stage = False
         if not stage(time.time() - self.stage_started_at):
+            print "stage change"
             old_idx = self.stage_idx
             self.stage_idx = (self.stage_idx + 1) % len(self.stages)
             if old_idx > self.stage_idx:
                 self.looped_count += 1
                 self.finished = True
-                self.new_stage = False
+            self.new_stage = True
 
     def setup(self, t):
         """
@@ -116,8 +118,16 @@ class MusicalStory(Story):
         self.looper = looper
         super(MusicalStory, self).__init__(storyboard)
 
-    def play(self, track_idx):
-        self.looper.ensure_playing(track_idx)
+    def play(self, track_name):
+        """
+        Ensure the track corresponding to the given track name
+        (as according to self.storyboard.track_listing) is playing
+        """
+        self.looper.ensure_playing(self.storyboard.track_listing[track_name])
 
-    def stop(self, track_idx):
-        self.looper.ensure_stopped(track_idx)
+    def stop(self, track_name):
+        """
+        Ensure the track corresponding to the given track name
+        (as according to self.storyboard.track_listing) is stopped
+        """
+        self.looper.ensure_stopped(self.storyboard.track_listing[track_name])

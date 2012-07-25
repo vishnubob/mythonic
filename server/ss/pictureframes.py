@@ -31,7 +31,7 @@ class RedSewsBat(SSPictureFrame):
     @staticmethod
     def mood(pf, t, span):
         # yellow
-        pf.hsv = (1, 1, 0)
+        pf.fade_rgb(t, span, 255, 255, 0)
 
 class RedFinishesBat(SSPictureFrame):
     """
@@ -39,7 +39,7 @@ class RedFinishesBat(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.green = pf.MAX_GREEN
+        pf.fade_rgb(t, span, 0, 255, 0)
 
 class RedHugsBat(SSPictureFrame):
     """
@@ -47,7 +47,7 @@ class RedHugsBat(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.red = pf.MAX_RED
+        pf.fade_rgb(t, span, 255, 0, 0)
 
 class RedPlaysWithBat(SSPictureFrame):
     """
@@ -56,9 +56,7 @@ class RedPlaysWithBat(SSPictureFrame):
     @staticmethod
     def mood(pf, t, span):
         # magenta
-        pf.red = 255
-        pf.green = 0
-        pf.blue = 255
+        pf.fade_rgb(t, span, 255, 0, 255)
 
 class RedHangsBat(SSPictureFrame):
     """
@@ -66,9 +64,7 @@ class RedHangsBat(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.red = 160
-        pf.green = 32
-        pf.blue = 240
+        pf.fade_rgb(t, span, 160, 32, 240)
 
 class BatFliesAway(SSPictureFrame):
     """
@@ -76,9 +72,7 @@ class BatFliesAway(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.red = 0
-        pf.green = 0
-        pf.blue = pf.MAX_BLUE
+        pf.fade_rgb(t, span, 0, 0, 255)
 
 class BatTakesOff(SSPictureFrame):
     """
@@ -86,9 +80,7 @@ class BatTakesOff(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.red = 255
-        pf.green = 165
-        pf.blue = 0
+        pf.fade_rgb(t, span, 255, 165, 0)
 
 class BatEatsStars(SSPictureFrame):
     """
@@ -99,9 +91,9 @@ class BatEatsStars(SSPictureFrame):
         """
         Yellow to purple
         """
-        pf.red = mmath.travel(t, span, 255, 160)
-        pf.green = mmath.travel(t, span, 255, 32)
-        pf.blue = mmath.travel(t, span, 0, 240)
+        if pf.fade_rgb(t, span, 255, 165, 0):
+            return
+        pf.fade_rgb(t, span, 160, 32, 240)
 
 class BatTripsBalls(SSPictureFrame):
     """
@@ -120,7 +112,7 @@ class RedIsSad(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.blue = pf.MAX_BLUE / 2.0
+        pf.fade_rgb(t, span, 0, 0, pf.MAX_BLUE / 2.0)
 
 class PlanetTapsShoulder(SSPictureFrame):
     """
@@ -128,9 +120,7 @@ class PlanetTapsShoulder(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.red = 0
-        pf.green = 128
-        pf.blue = 128
+        pf.fade_rgb(t, span, 0, 128, 128)
 
 class PlanetHangout(SSPictureFrame):
     """
@@ -138,7 +128,5 @@ class PlanetHangout(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.red = 255
-        pf.green = 0
-        pf.blue = 255
+        pf.fade_rgb(t, span, 255, 0, 255)
 

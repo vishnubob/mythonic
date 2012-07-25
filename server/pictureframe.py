@@ -11,14 +11,12 @@ class Pattern(list):
 
 class Storyboard(list):
     """
-    A container for picture frames and patterns with convenience
-    methods for inspecting both.
+    A container for picture frames, patterns with convenience
+    methods for inspecting both, and meta information that pertains
+    to the stories taking place therewith
     """
-    def __init__(self, picture_frames, patterns=[]):
-        for pattern in patterns:
-            for pf in pattern:
-                if pf not in picture_frames:
-                    raise ValueError("Picture frames in arg 'patterns' must exist in arg 'picture_frames'")
+    def __init__(self, picture_frames, track_listing, patterns=[]):
+        self.track_listing = track_listing
         self.patterns = patterns
         self.initialized_at = time.time()
         super(Storyboard, self).__init__(picture_frames)
@@ -30,6 +28,10 @@ class Storyboard(list):
     @property
     def touched(self):
         return len(self.touched_frames) > 0
+
+    @property
+    def inactive_frames(self):
+        return [pf for pf in self if not pf.active]
 
     @property
     def active_frames(self):
@@ -238,7 +240,6 @@ class Fade(object):
         self.last_value = original_value
 
     def calc(self, t):
-        assert(self.span == 5)
         value = mmath.travel(t, self.span, self.original_value, self.target_value)
         self.last_value = value
         return value

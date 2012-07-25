@@ -17,7 +17,7 @@ class SSManager(manager.StoryManager):
         self.startup_test = StartupTest(storyboard)
         self.dice = Dice(storyboard)
         self.blackout_game = BlackoutGame(storyboard)
-        time_per_frame = 1
+        time_per_frame = 20
         self.naratives = [
             BatAdventure(storyboard, looper, time_per_frame),
             TreeArt(storyboard, looper, time_per_frame),
@@ -27,28 +27,6 @@ class SSManager(manager.StoryManager):
             activators = [pf for idx, pf in enumerate(narative.foci) if idx % 2 != 0]
             storyboard.patterns.append(pictureframe.Pattern(activators, narative))
         super(SSManager, self).__init__(hc, storyboard, looper)
-
-    def select_story(self):
-        current = self.current_story
-        if current is None:
-            #return self.startup_test
-            return self.instrument
-        if isinstance(current, Instrument):
-            untouched_since = max(current.stage_started_at, self.storyboard.untouched_since)
-            if time.time() - untouched_since >= self.SCREENSAVER_TIMEOUT:
-               return self.screensaver
-            if self.storyboard.pattern_complete:
-               return self.storyboard.target_pattern.triggered_story
-        if isinstance(current, Screensaver):
-            if self.storyboard.touched:
-                return self.instrument
-            if current.finished and current.looped_count >= 2:
-                return self.naratives[int(random.random() * len(self.naratives))]
-            return self.screensaver
-        if not current.finished:
-            return current
-        # Default to Instrument
-        return self.instrument
 
 class BlackoutGame(manager.Story):
 
@@ -108,33 +86,44 @@ class StartupTest(manager.Story):
 class Instrument(manager.MusicalStory):
 
     def setup(self, t):
+        # list of track names, duplicates
+        self.now_playing = []
         for pf in self.storyboard:
             pf.blackout()
             pf.deactivate()
-            for track in pf.drum_tracks:
-                self.play(track)
 
     def plot(self, since_start):
         """
         Manage effects
         """
         for idx, pf in enumerate(self.storyboard):
-            t = since_start + idx
+            t = since_start + idx * 1.3
             pf.blackout()
+            if pf.touched:
+                self.handle_touch(pf)
             if pf.active:
-                for track in pf.lead_tracks:
-                    self.play(track)
-                pf.cycle_hue(t, 20, 1, 0.5)
+                pf.cycle_hue(t, 5, 1, 0.5)
                 pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
                     pf.pattern_hint(t)
             else:
-                for track in pf.lead_tracks:
-                    self.stop(track)
                 pf.white = pf.MAX_WHITE / 3
         return True
 
-    def teardown(self):
+    def handle_touch(self, pf):
+        if pf.active:
+            self.now_playing += pf.tracks
+            for track in pf.tracks:
+                self.play(track)
+            print self.now_playing
+        else:
+            for track in pf.tracks:
+                self.now_playing.remove(track)
+                if track not in self.now_playing:
+                    self.stop(track)
+            print self.now_playing
+
+def teardown(self):
         for idx, track in enumerate(self.looper.tracks):
             self.stop(idx)
         return super(Instrument, self).teardown()
@@ -146,18 +135,12 @@ class Narative(manager.MusicalStory):
         self.time_per_frame = time_per_frame
         super(Narative, self).__init__(storyboard, looper)
 
-    def setup(self, t):
-        for pf in self.storyboard:
-            for track in pf.drum_tracks:
-                self.play(track)
-        return super(Narative, self).setup(t)
-
     def plot(self, t):
         if len(self.foci) == 0:
             return False
         story_length = len(self.foci) * self.time_per_frame
         focus_idx = int(mmath.travel(t, story_length, 0, len(self.foci)))
-        focus = self.storyboard[focus_idx]
+        focus = self.foci[focus_idx]
         for pf in self.storyboard:
             if pf == focus:
                 continue

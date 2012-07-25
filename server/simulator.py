@@ -25,8 +25,8 @@ def main():
     looper = make_looper(server.MIDI_TRACKS, midi_client, midi_port)
     picture_frames = server.PICTURE_FRAMES
     hc = PyGHardwareChain([port] * len(picture_frames), [pf.real_address for pf in picture_frames])
-    server.load_tracks(picture_frames)
-    manager = PyGManager(hc, pictureframe.Storyboard(picture_frames), looper)
+    sb = pictureframe.Storyboard(picture_frames, server.track_listing(server.MIDI_TRACKS))
+    manager = PyGManager(hc, sb, looper)
     manager.run()
 
 class PyGHardwareChain(biscuit.HardwareChain):
@@ -80,9 +80,9 @@ class PyGManager(ss.SSManager):
     def pos_to_addr(self, pos):
          return int(pos[1]/float(BOX_HEIGHT))
 
-#    def select_story(self):
-#        return self.test_story
-#
+    def select_story(self):
+        return self.instrument#self.test_story
+
     def think(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -96,7 +96,7 @@ class TestStory(manager.Story):
     def setup(self, t):
         work_left = False
         for pf in self.storyboard:
-            work_left |= pf.fade_blue(t, 5, 255) #pf.fade_rgb(t, 5, 255, 255, 0)
+            work_left |= pf.fade_rgb(t, 5, 255, 255, 0)
         return work_left
 
     def plot(self, t):
