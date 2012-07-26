@@ -45,7 +45,7 @@ class FrameTouch(object):
         self.hc = hc
         self.touch_trigger = False
         self.refresh_length = refresh_length
-        self.last_refresh = random.random() + time.time()
+        self.last_refresh = time.time() + random.random()
         self.touch_ts = 0
         self.idx = 0
         self.trigger_count = 0

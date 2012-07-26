@@ -41,7 +41,7 @@ void enable_serial_output()
     digitalWrite(RE485_PIN, HIGH);
     // turn on transmitter
     digitalWrite(DE485_PIN, HIGH);
-    digitalWrite(GRN, HIGH);
+    digitalWrite(RED, HIGH);
 }
 
 void disable_serial_output()
@@ -53,7 +53,7 @@ void disable_serial_output()
     digitalWrite(DE485_PIN, LOW);
     // turn on receiver
     digitalWrite(RE485_PIN, LOW);
-    digitalWrite(GRN, LOW);
+    digitalWrite(RED, LOW);
 }
 
 /******************************************************************************
@@ -90,7 +90,7 @@ public:
     Average() {}
 
     Average(uint8_t sz) :
-        _sz(8), _idx(0)
+        _sz(sz), _idx(0), _level(0)
     {
         _data = (unsigned long*)malloc(_sz * sizeof(unsigned long));
         memset(_data, 0, _sz * sizeof(unsigned long));
@@ -109,7 +109,7 @@ public:
         {
             sum += _data[sum_idx];
         }
-        return (sum << 3);
+        return (unsigned long)(sum / (float)_sz);
     }
 
     void set(unsigned long offset)
@@ -119,7 +119,7 @@ public:
 
     bool trigger()
     {
-        return (pull() > _level);
+        return (_level > 0) ? (pull() > _level) : false;
     }
 
 private:
@@ -128,6 +128,8 @@ private:
     unsigned long* _data;
     unsigned long _level;
 };
+
+unsigned long touch_step = 0;
 
 class TouchSet
 {
@@ -138,17 +140,18 @@ public:
         _sensors[1] = CapSense(A0, A2);
         _sensors[2] = CapSense(A0, A3);
         _sensors[3] = CapSense(A0, A4);
-        _average[0] = Average(20);
-        _average[1] = Average(20);
-        _average[2] = Average(20);
-        _average[3] = Average(20);
+        _average[0] = Average(8);
+        _average[1] = Average(8);
+        _average[2] = Average(8);
+        _average[3] = Average(8);
         _sensor_idx = 0;
         _last_cal = 0;
-        _timeout_cal = 200;
+        _timeout_cal = 2000;
     }
 
     void step()
     {
+        touch_step += 1;
         CapSense *current_sensor = _sensors + _sensor_idx;
         if (current_sensor->step_sensor())
         {
@@ -157,19 +160,28 @@ public:
         }
     }
 
+    unsigned long average(uint8_t idx)
+    {
+        return _average[idx].pull();
+    }
+
     bool trigger()
     {
         bool trigger_flag = false;
         for(int x = 0; x < TOUCH_COUNT; ++x)
         {
             trigger_flag |= _average[x].trigger();
+            if(trigger_flag)
+            {
+                break;
+            }
         }
 
-        if ((_last_cal - millis()) > _timeout_cal)
+        if ((millis() - _last_cal) > _timeout_cal)
         {
             for(int x = 0; x < TOUCH_COUNT; ++x)
             {
-                _average[x].set(50);
+                _average[x].set(10);
             }
             _last_cal = millis();
         }
@@ -254,6 +266,29 @@ uint8_t serial_state = 0;
 uint8_t serial_command = 0;
 uint8_t command_address = 0;
 
+void __loop(void)
+{
+    uint8_t val = (uint8_t)touchset.trigger();
+    enable_serial_output();
+    Serial.print(touch_step);
+    Serial.print(" ");
+    Serial.print(touchset.average(0));
+    Serial.print(" ");
+    Serial.print(touchset.average(1));
+    Serial.print(" ");
+    Serial.print(touchset.average(2));
+    Serial.print(" ");
+    Serial.print(touchset.average(3));
+    Serial.print(" ");
+    Serial.println((val ? "Y" : "N"));
+    for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
+    {
+        leds[ch].set(random(0, 0xff));
+    }
+    disable_serial_output();
+}
+
+
 void loop(void)
 {
     if (!Serial.available()) 
@@ -269,18 +304,12 @@ void loop(void)
 
     switch(serial_state)
     {
-        digitalWrite(RED, LOW);
         case COMMAND_STATE:
             if (ch == 'L')
             {
                 serial_command = LIGHT_RECV_STATE;
                 serial_state = COMMAND_ADDRESS_STATE;
                 light_buffer_idx = 0;
-            } else
-            if (ch == 'B')
-            {
-                serial_command = BEACON_COMMAND;
-                serial_state = COMMAND_ADDRESS_STATE;
             } else
             if (ch == 'T')
             {
@@ -296,13 +325,6 @@ void loop(void)
             command_address = ch;
             if (command_address == board_addr)
             {
-                if (serial_command == BEACON_COMMAND)
-                {
-                    digitalWrite(RED, HIGH);
-                    delay(300);
-                    digitalWrite(RED, LOW);
-                    serial_state = WAIT_FOR_COMMAND_STATE;
-                } else
                 if (serial_command == TOUCH_COMMAND)
                 {
                     uint8_t val = 0;
@@ -326,7 +348,7 @@ void loop(void)
             {
                 for(uint8_t ch = 0; ch < LED_COUNT; ++ch)
                 {
-                    uint8_t val = (light_buffer[ch] << 1) | ((light_buffer[LED_COUNT] & (1 << (LED_COUNT - ch))) >> (LED_COUNT - ch));
+                    uint8_t val = (light_buffer[ch] << 1) | ((light_buffer[LED_COUNT] & (1 << (LED_COUNT - (ch + 1)))) >> (LED_COUNT - (ch + 1)));
                     leds[ch].set(val);
                 }
                 serial_state = WAIT_FOR_COMMAND_STATE;
