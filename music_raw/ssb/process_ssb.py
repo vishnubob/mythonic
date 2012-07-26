@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-
 import midi
 
 path = "ssb.mid"
@@ -132,7 +131,9 @@ track = mf[0]
 for track in mf:
     for event in track:
         if isinstance(event, midi.TrackNameEvent):
-            name = str.join('', map(chr, event.data))
+            #print event.data
+            #name = str.join('', map(chr, event.data))
+            name = event.data
             if name.startswith("Redrum"):
                 handle_drum_track(track)
                 break
