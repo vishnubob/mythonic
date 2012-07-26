@@ -30,10 +30,11 @@ class StoryManager(biscuit.Manager):
 
     def think(self):
         # Handle touch
-        for position, touched in enumerate(self.hc.get_touch_triggers()):
-            if touched:
-                print "Touch on position", position
-                self.storyboard[position].touch()
+        touch_triggers = self.hc.get_touch_triggers()
+        for pf in self.storyboard:
+            idx = self.hc.addresses.index(pf.real_address)
+            if touch_triggers[idx]:
+                pf.touch()
         # Handle story selection/deselection
         next_story = self.select_story()
         if next_story != self.current_story:
@@ -46,7 +47,7 @@ class StoryManager(biscuit.Manager):
         if self.looper is not None:
             self.looper.think()
         # Push changes and reset touch
-        for pf in self.current_story.storyboard:
+        for pf in self.storyboard:
             pf.untouch()
             idx = self.hc.addresses.index(pf.real_address)
             self.hc.set_light(idx, self.RED_IDX, pf.red)
