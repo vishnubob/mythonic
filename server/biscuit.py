@@ -91,7 +91,7 @@ class HardwareChain(object):
         # set the tiemout
         for port in list(set(self.ports.values())):
             port.timeout = (self.write_delay * self.timeout_factor)
-        self.write_delay = .01
+        self.write_delay = .001
         self.light_frames = [FrameLights(addr, self) for addr in self.addresses]
         self.touch_frames = [FrameTouch(addr, self) for addr in self.addresses]
         self.frame_idx = 0
