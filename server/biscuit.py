@@ -34,8 +34,8 @@ class FrameLights(object):
         #         we might be able to re-write missed
         #         light messages
         #if True or self.dirty():
-        if self.dirty():
-            self.hc.send_light_data(self.address, self)
+        #jif self.dirty():
+        self.hc.send_light_data(self.address, self)
         self.flip()
 
 class FrameTouch(object):
