@@ -243,7 +243,6 @@ class Fade(object):
     def calc(self, t):
         value = mmath.travel(t, self.span, self.original_value, self.target_value)
         self.last_value = value
-        print value
         return value
 
     def __ne__(self, other):

@@ -81,7 +81,7 @@ class PyGManager(ss.SSManager):
          return int(pos[1]/float(BOX_HEIGHT))
 
     def select_story(self):
-        return self.test_story#self.naratives[0]#self.screensaver#self.naratives[0]#self.test_story
+        return self.naratives[2]#self.naratives[0]#self.screensaver#self.naratives[0]#self.test_story
 
     def think(self):
         for event in pygame.event.get():

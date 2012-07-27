@@ -119,6 +119,10 @@ class MusicalStory(Story):
         self.looper = looper
         super(MusicalStory, self).__init__(storyboard)
 
+    def teardown(self, t):
+        for idx, track in enumerate(self.looper.tracks):
+            self.looper.ensure_stopped(idx)
+
     def play(self, track_name):
         """
         Ensure the track corresponding to the given track name
