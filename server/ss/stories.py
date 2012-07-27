@@ -31,8 +31,10 @@ class SSManager(manager.StoryManager):
     def select_story(self):
         current = self.current_story
         if current is None:
-            return self.startup_test
-            #return self.instrument
+            #return self.naratives[0]
+            #return self.screensaver
+            #return self.startup_test
+            return self.instrument
         if isinstance(current, Instrument):
             untouched_since = max(current.stage_started_at, self.storyboard.untouched_since)
             if time.time() - untouched_since >= self.SCREENSAVER_TIMEOUT:
@@ -137,13 +139,13 @@ class Instrument(manager.MusicalStory):
             self.now_playing += pf.tracks
             for track in pf.tracks:
                 self.play(track)
-            print self.now_playing
+            print "Now playing:", self.now_playing
         else:
             for track in pf.tracks:
                 self.now_playing.remove(track)
                 if track not in self.now_playing:
                     self.stop(track)
-            print self.now_playing
+            print "Now playing:", self.now_playing
 
     def teardown(self):
         for idx, track in enumerate(self.looper.tracks):
@@ -155,7 +157,11 @@ class Narative(manager.MusicalStory):
     def __init__(self, storyboard, looper, foci, time_per_frame=10):
         self.foci = foci
         self.time_per_frame = time_per_frame
+        self.last_focus = None
         super(Narative, self).__init__(storyboard, looper)
+
+    def play_music(self, focus):
+        print focus.__class__.__name__
 
     def plot(self, t):
         if len(self.foci) == 0:
@@ -165,6 +171,9 @@ class Narative(manager.MusicalStory):
         if focus_idx >= len(self.foci):
             return False
         focus = self.foci[focus_idx]
+        if self.last_focus != focus:
+            self.last_focus = focus
+            self.play_music(focus)
         for pf in self.storyboard:
             if pf == focus:
                 continue
@@ -185,7 +194,9 @@ class TreeArt(Narative):
             RedPlaysWithBat,
             RedHangsBat
         ]
-        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
+        foci = []
+        for fc in foci_classes:
+            foci += [pf for pf in storyboard if isinstance(pf, fc)]
         super(TreeArt, self).__init__(storyboard, looper, foci, time_per_frame)
 
 class FriendshipPlanet(Narative):
@@ -200,7 +211,9 @@ class FriendshipPlanet(Narative):
             PlanetTapsShoulder,
             PlanetHangout
         ]
-        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
+        foci = []
+        for fc in foci_classes:
+            foci += [pf for pf in storyboard if isinstance(pf, fc)]
         super(FriendshipPlanet, self).__init__(storyboard, looper, foci, time_per_frame)
 
 class BatAdventure(Narative):
@@ -215,7 +228,9 @@ class BatAdventure(Narative):
             BatEatsStars,
             BatTripsBalls
         ]
-        foci = [pf for pf in storyboard if pf.__class__ in foci_classes]
+        foci = []
+        for fc in foci_classes:
+            foci += [pf for pf in storyboard if isinstance(pf, fc)]
         super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
 
 
@@ -223,12 +238,23 @@ class Screensaver(manager.Story):
 
     def __init__(self, storyboard, span):
         self.span = span
-        self.pattern_idx = 0
         super(Screensaver, self).__init__(storyboard)
+
+    def setup(self, t):
+        self.pattern_idx = 0
+        self.foci = list(self.storyboard)
+        random.shuffle(self.foci)
 
     @property
     def pattern_span(self):
         return float(self.span) / len(self.storyboard.patterns)
+
+    @property
+    def focus_span(self):
+        return self.pattern_span
+
+    def current_focus(self, t):
+        return self.foci[int(t/self.focus_span)]
 
     def hinted_pattern(self, t):
         """
@@ -251,8 +277,15 @@ class Screensaver(manager.Story):
         pattern = self.hinted_pattern(t)
         if pattern is None:
             return False
+        focus = self.current_focus(t)
         for pf in self.storyboard:
-            pf.blackout()
+            if pf is focus:
+                focus.blackout()
+                focus.white = focus.MAX_WHITE / 3
+            else:
+                pf.uv = pf.MIN_UV
+                pf.white = pf.MIN_WHITE
+                focus.mood(pf, t, self.focus_span)
         hinted_frame_idx = int(t/(self.pattern_span/float(len(pattern)))) % len(pattern)
         if hinted_frame_idx < len(pattern):
             hinted_frame = pattern[hinted_frame_idx]
