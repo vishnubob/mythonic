@@ -82,7 +82,7 @@ class FrameTouch(object):
 class HardwareChain(object):
     def __init__(self, ports, addresses, write_delay=.1, timeout_factor=50):
         self.write_delay = write_delay
-        self.write_delay = .001
+        self.write_delay = .0005
         self.timeout_factor = timeout_factor
         self.addresses = addresses
         self.ports = {}
@@ -91,7 +91,6 @@ class HardwareChain(object):
         # set the tiemout
         for port in list(set(self.ports.values())):
             port.timeout = (self.write_delay * self.timeout_factor)
-        self.write_delay = .001
         self.light_frames = [FrameLights(addr, self) for addr in self.addresses]
         self.touch_frames = [FrameTouch(addr, self) for addr in self.addresses]
         self.frame_idx = 0
