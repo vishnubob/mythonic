@@ -247,6 +247,12 @@ class FriendshipPlanet(Narative):
             foci += [pf for pf in storyboard if isinstance(pf, fc)]
         super(FriendshipPlanet, self).__init__(storyboard, looper, foci, time_per_frame)
 
+    def setup(self, t):
+        drums = ["drums_1_37", "drums_1_38", "drums_1_41", "drums_1_42", "drums_1_43"]
+        lead = ["lead_1"]
+        for track in drums + lead:
+            self.play(track)
+
 class BatAdventure(Narative):
 
     def __init__(self, storyboard, looper, time_per_frame=10):

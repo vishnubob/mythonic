@@ -27,19 +27,19 @@ ROUTING = {
 }
 
 PICTURE_FRAMES = [
-    RedSitsAlone(1, drums=["drum_37"]),
-    RedSewsBat(2, drums=["drum_38"]),
-    RedFinishesBat(3, drums=["drum_41"]),
-    RedHugsBat(4, drums=["drum_42"]),
-    RedPlaysWithBat(5, drums=["drum_43"]),
-    RedHangsBat(6, drums=["drum_37"]),
-    BatFliesAway(10, drums=["drum_38"]),
-    BatTakesOff(9, drums=["drum_41"]),
-    BatEatsStars(8, drums=["drum_42"]),
-    BatTripsBalls(7, drums=["drum_43"]),
-    RedIsSad(11, drums=["drum_37"]),
-    PlanetTapsShoulder(12, drums=["drum_38"]),
-    PlanetHangout(13, drums=["drum_41"])
+    RedSitsAlone(1, tracks=["drums_3_36"]),
+    RedSewsBat(2, tracks=["lead_1"]),
+    RedFinishesBat(3, tracks=["drums_3_"]),
+    RedHugsBat(4, tracks=["drums_3_"]),
+    RedPlaysWithBat(5, tracks=[""]),
+    RedHangsBat(6, tracks=["drums_3_"]),
+    BatFliesAway(10, tracks=[""]),
+    BatTakesOff(9, tracks=[""]),
+    BatEatsStars(8, tracks=[""]),
+    BatTripsBalls(7, tracks=[""]),
+    RedIsSad(11, tracks=[""]),
+    PlanetTapsShoulder(12, tracks=[""]),
+    PlanetHangout(13, tracks=[""])
 ]
 
 def main():
