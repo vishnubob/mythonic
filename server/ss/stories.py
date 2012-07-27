@@ -107,6 +107,26 @@ class Dice(manager.Story):
                 self.randomize(pf)
         return t < len(self.storyboard) + 10
 
+class MuffinTest(manager.Story):
+
+    def plot(self, t):
+        color = int(mmath.travel(t, 20, 0, 5))
+        for pf in self.storyboard:
+            if pf.touched:
+                print "[TOUCH] Human address %d" % (pf.human_address)
+            pf.blackout()
+            if color == 0:
+               pf.red = pf.MAX_RED
+            elif color == 1:
+               pf.green = pf.MAX_GREEN
+            elif color == 2:
+               pf.blue= pf.MAX_BLUE
+            elif color == 3:
+               pf.white = pf.MAX_WHITE
+            elif color >= 4:
+               pf.uv = pf.MAX_UV
+        return color < 5
+
 class StartupTest(manager.Story):
 
     def plot(self, t):
