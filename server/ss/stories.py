@@ -2,13 +2,13 @@ import manager
 import mmath
 import random
 import time
-
+import ss
 from ss.pictureframes import *
 
-SCREENSAVER_TIMEOUT = 3 * 60
+SCREENSAVER_TIMEOUT = 1 * 60
 SCREENSAVER_SPAN = 30
-SCREENSAVER_LOOPS = int((2 * 60) / SCREENSAVER_SPAN)
-NARATIVE_SPAN = 2 * 60
+SCREENSAVER_LOOPS = int((1 * 60) / SCREENSAVER_SPAN)
+NARATIVE_SPAN = 60
 
 class SSManager(manager.StoryManager):
     """
@@ -18,6 +18,7 @@ class SSManager(manager.StoryManager):
     def __init__(self, hc, storyboard, looper=None):
         self.screensaver = Screensaver(storyboard, span=SCREENSAVER_SPAN)
         self.instrument = Instrument(storyboard, looper)
+        self.startup_test = ss.unused.MuffinTest(storyboard)
         self.naratives = [
             BatAdventure(storyboard, looper, NARATIVE_SPAN),
             TreeArt(storyboard, looper, NARATIVE_SPAN),
@@ -29,6 +30,7 @@ class SSManager(manager.StoryManager):
         super(SSManager, self).__init__(hc, storyboard, looper)
 
     def select_story(self):
+        #return self.startup_test
         current = self.current_story
         if current is None:
             return self.instrument
@@ -176,7 +178,7 @@ class Narative(manager.MusicalStory):
                 continue
             pf.white = pf.MIN_WHITE
             focus.mood(pf, t - self.last_change, self.time_per_frame)
-        return True
+        return not self.storyboard.touched
 
 class TreeArt(Narative):
 

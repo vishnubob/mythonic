@@ -87,4 +87,4 @@ class StartupTest(manager.Story):
                 pf.blue = pf.MAX_BLUE
             else:
                 pf.red = pf.MAX_RED
-        return not self.storyboard.touched
+        return t < max(pf.real_address for pf in self.storyboard) + 1

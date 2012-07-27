@@ -16,13 +16,13 @@ import pictureframe
 import ss
 from ss.pictureframes import *
 
-MIDI_CLIENT = 20
+MIDI_CLIENT = 24
 MIDI_PORT = 0
 
 MIDI_TRACKS = glob.glob(os.path.join("..", "music_raw", "ssb", "*.mid"))
 
 ROUTING = {
-    "/dev/ttyUSB0": range(1, 7),
+    "/dev/ttyUSB0": range(1, 6),
     "/dev/ttyUSB1": range(7, 14)
 }
 
