@@ -64,18 +64,18 @@ for track in mf:
             name = str.join('', map(chr, event.data))
             filename = name.replace(" ", "_").lower() + ".mid" 
             if name == "Drums 1":
-                handle_drum_track(track, "drums_1_", 1)
+                handle_drum_track(track, "drums_1_", 0)
             elif name == "Drums 2":
-                handle_drum_track(track, "drums_2_", 2)
+                handle_drum_track(track, "drums_2_", 1)
             elif name == "Drums 3":
-                handle_drum_track(track, "drums_3_", 3)
+                handle_drum_track(track, "drums_3_", 2)
             elif name == "Bass":
-                save_track(track, filename, 4)
+                save_track(track, filename, 3)
             elif name == "Pad":
-                save_track(track, filename, 5)
+                save_track(track, filename, 4)
             elif name == "Lead 1":
-                save_track(track, filename, 6)
+                save_track(track, filename, 5)
             elif name == "Lead 2":
-                save_track(track, filename, 7)
+                save_track(track, filename, 6)
             elif name == "Lead 3":
-                save_track(track, filename, 8)
+                save_track(track, filename, 7)
