@@ -17,6 +17,7 @@ class SSManager(manager.StoryManager):
         self.startup_test = StartupTest(storyboard)
         self.dice = Dice(storyboard)
         self.blackout_game = BlackoutGame(storyboard)
+        self.chaos = Chaos(storyboard)
         time_per_frame = 5
         self.naratives = [
             BatAdventure(storyboard, looper, time_per_frame),
@@ -35,6 +36,7 @@ class SSManager(manager.StoryManager):
             #return self.screensaver
             #return self.startup_test
             return self.instrument
+            #return self.chaos
         if isinstance(current, Instrument):
             untouched_since = max(current.stage_started_at, self.storyboard.untouched_since)
             if time.time() - untouched_since >= self.SCREENSAVER_TIMEOUT:
@@ -80,6 +82,15 @@ class BlackoutGame(manager.Story):
                 pf.white = pf.MAX_WHITE
         return len(self.lighted) > 0
 
+class Chaos(manager.Story):
+    def plot(self, t):
+        for pf in self.storyboard:
+            pf.hsv = tuple(random.random() for i in range(3))
+            pf.rgb = tuple(random.random() * 255 for i in range(3))
+            pf.white = random.random() * pf.MAX_WHITE
+            pf.uv = random.random() * pf.MAX_UV
+        return True
+
 class Dice(manager.Story):
 
     def randomize(self, pf, saturation=1):
@@ -95,6 +106,26 @@ class Dice(manager.Story):
             if idx > t:
                 self.randomize(pf)
         return t < len(self.storyboard) + 10
+
+class MuffinTest(manager.Story):
+
+    def plot(self, t):
+        color = int(mmath.travel(t, 20, 0, 5))
+        for pf in self.storyboard:
+            if pf.touched:
+                print "[TOUCH] Human address %d" % (pf.human_address)
+            pf.blackout()
+            if color == 0:
+               pf.red = pf.MAX_RED
+            elif color == 1:
+               pf.green = pf.MAX_GREEN
+            elif color == 2:
+               pf.blue= pf.MAX_BLUE
+            elif color == 3:
+               pf.white = pf.MAX_WHITE
+            elif color >= 4:
+               pf.uv = pf.MAX_UV
+        return color < 5
 
 class StartupTest(manager.Story):
 
