@@ -138,6 +138,7 @@ class HardwareChain(object):
         light_data = list(light_data)
         extra_byte = 0
         for (idx, val) in enumerate(light_data):
+            val = int(val)
             extra_byte = (extra_byte << 1) | (val & 0x1)
             val >>= 1
             port.write(chr(val))
