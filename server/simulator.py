@@ -74,14 +74,10 @@ class PyGManager(ss.SSManager):
 
     def __init__(self, hc, storyboard, looper):
         self.test_story = TestStory(storyboard)
-        #self.test_story = ss.Narative(storyboard, looper, server.PICTURE_FRAMES, 2)
         super(PyGManager, self).__init__(hc, storyboard, looper)
 
     def pos_to_addr(self, pos):
-         return int(pos[1]/float(BOX_HEIGHT))
-
-    def select_story(self):
-        return self.instrument#self.naratives[2]#self.naratives[0]#self.screensaver#self.naratives[0]#self.test_story
+         return self.hc.addresses[int(pos[1]/float(BOX_HEIGHT))]
 
     def think(self):
         for event in pygame.event.get():
