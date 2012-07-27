@@ -81,7 +81,7 @@ class PyGManager(ss.SSManager):
          return int(pos[1]/float(BOX_HEIGHT))
 
     def select_story(self):
-        return self.naratives[0]#self.test_story
+        return self.test_story#self.naratives[0]#self.screensaver#self.naratives[0]#self.test_story
 
     def think(self):
         for event in pygame.event.get():
@@ -96,13 +96,13 @@ class TestStory(manager.Story):
     def setup(self, t):
         work_left = False
         for pf in self.storyboard:
-            work_left |= pf.fade_rgb(t, 5, 255, 255, 0)
+            work_left |= pf.fade_rgb(t, 5, 0, 128, 128)
         return work_left
 
     def plot(self, t):
         work_left = False
         for pf in self.storyboard:
-            work_left |= pf.fade_rgb(t, 5, 160, 32, 240)
+            work_left |= pf.fade_rgb(t, 5, 255, 255, 128)
         return work_left
 
     def teardown(self, t):

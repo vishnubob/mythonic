@@ -16,30 +16,30 @@ import pictureframe
 import ss
 from ss.pictureframes import *
 
-MIDI_CLIENT = 14
+MIDI_CLIENT = 20
 MIDI_PORT = 0
 
 MIDI_TRACKS = glob.glob(os.path.join("..", "music_raw", "ssb", "*_*.mid"))
 
 ROUTING = {
-    "/dev/ttyUSB1": range(1, 7),
-    "/dev/ttyUSB0": range(7, 14)
+    "/dev/ttyUSB0": range(1, 7),
+    "/dev/ttyUSB1": range(7, 14)
 }
 
 PICTURE_FRAMES = [
-    RedSitsAlone(1, lead_tracks=[], drum_tracks=["drum_37"]),
-    RedSewsBat(2, lead_tracks=[], drum_tracks=["drum_37"]),
-    RedFinishesBat(3),
-    RedHugsBat(4),
-    RedPlaysWithBat(5),
-    RedHangsBat(6),
-    BatFliesAway(10),
-    BatTakesOff(9),
-    BatEatsStars(8),
-    BatTripsBalls(7),
-    RedIsSad(11),
-    PlanetTapsShoulder(12),
-    PlanetHangout(13)
+    RedSitsAlone(1, drums=["drum_37"]),
+    RedSewsBat(2, drums=["drum_38"]),
+    RedFinishesBat(3, drums=["drum_41"]),
+    RedHugsBat(4, drums=["drum_42"]),
+    RedPlaysWithBat(5, drums=["drum_43"]),
+    RedHangsBat(6, drums=["drum_37"]),
+    BatFliesAway(10, drums=["drum_38"]),
+    BatTakesOff(9, drums=["drum_41"]),
+    BatEatsStars(8, drums=["drum_42"]),
+    BatTripsBalls(7, drums=["drum_43"]),
+    RedIsSad(11, drums=["drum_37"]),
+    PlanetTapsShoulder(12, drums=["drum_38"]),
+    PlanetHangout(13, drums=["drum_41"])
 ]
 
 def main():

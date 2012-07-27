@@ -4,11 +4,12 @@ import biscuit
 import serial
 import random
 import time
+import sys
 
 ADDRESSES = range(2)
 
 def main():
-    tty = serial.Serial("/dev/ttyUSB0", baudrate=1000000)
+    tty = serial.Serial(sys.argv[1], baudrate=500000)
     m = CrashManager(biscuit.HardwareChain([tty] * len(ADDRESSES), ADDRESSES))
     print "Starting at %d" % (time.time())
     m.run()

@@ -27,16 +27,10 @@ CapSense::CapSense(uint8_t sendPin, uint8_t receivePin)
 
 	// initialize this instance's variables
     current_value = 0;
-	error = 1;
     sensor_mode = SENSOR_CHARGE;
 	MaxTotal = 1024;
     
 	// get pin mapping and port for send Pin - from PinMode function in core
-#ifdef NUM_DIGITAL_PINS
-	if (sendPin >= NUM_DIGITAL_PINS) error = -1;
-	if (receivePin >= NUM_DIGITAL_PINS) error = -1;
-#endif
-	
 	sBit =  digitalPinToBitMask(sendPin);			// get send pin's ports and bitmask
 	sPort = digitalPinToPort(sendPin);
 	sReg = portModeRegister(sPort);
@@ -99,7 +93,7 @@ bool CapSense::step_sensor(void)
                 total++;
             } else
             {
-                current_value = total;
+                current_value = (total < MaxTotal) ? total : 0;
                 sensor_mode = SENSOR_CHARGE;
                 return true;
             }

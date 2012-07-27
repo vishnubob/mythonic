@@ -45,7 +45,7 @@ class FrameTouch(object):
         self.hc = hc
         self.touch_trigger = False
         self.refresh_length = refresh_length
-        self.last_refresh = random.random() + time.time()
+        self.last_refresh = time.time() + random.random()
         self.touch_ts = 0
         self.idx = 0
         self.trigger_count = 0
@@ -138,6 +138,7 @@ class HardwareChain(object):
         light_data = list(light_data)
         extra_byte = 0
         for (idx, val) in enumerate(light_data):
+            val = int(val)
             extra_byte = (extra_byte << 1) | (val & 0x1)
             val >>= 1
             port.write(chr(val))

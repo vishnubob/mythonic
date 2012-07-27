@@ -203,27 +203,28 @@ class PictureFrame(object):
         setattr(self, color, fade.calc(t))
         return getattr(self, color) != target
 
-    def fade_red(self, t, span, target):
-        return self.fade_color(t, span, "red", target)
-
-    def fade_green(self, t, span, target):
-        return self.fade_color(t, span, "green", target)
-
-    def fade_blue(self, t, span, target):
-        return self.fade_color(t, span, "blue", target)
-
-    def fade_rgb(self, t, span, red, green, blue):
-        work_left = False
-        work_left |= self.fade_red(t, span, red)
-        work_left |= self.fade_green(t, span, green)
-        work_left |= self.fade_blue(t, span, blue)
-        return work_left
-
     def fade_uv(self, t, span, target):
         return self.fade_color(t, span, "uv", target)
 
     def fade_white(self, t, span, target):
         return self.fade_color(t, span, "white", target)
+
+    def fade_rgb(self, t, span, red, green, blue):
+        red_fade = Fade(span, self.red, red)
+        green_fade = Fade(span, self.green, green)
+        blue_fade = Fade(span, self.blue, blue)
+        rgb_fade = (red_fade, green_fade, blue_fade)
+        if "rgb" not in self.fades or rgb_fade != self.fades["rgb"]:
+            self.fades["rgb"] = rgb_fade
+        else:
+            rgb_fade = self.fades["rgb"]
+            red_fade = rgb_fade[0]
+            green_fade = rgb_fade[1]
+            blue_fade = rgb_fade[2]
+        self.red = red_fade.calc(t)
+        self.green = green_fade.calc(t)
+        self.blue = blue_fade.calc(t)
+        return (red, green, blue) != (self.red, self.green, self.blue)
 
     def fadeout(self, t, span):
         work_left = False
@@ -242,6 +243,7 @@ class Fade(object):
     def calc(self, t):
         value = mmath.travel(t, self.span, self.original_value, self.target_value)
         self.last_value = value
+        print value
         return value
 
     def __ne__(self, other):

@@ -3,9 +3,9 @@ import pictureframe
 
 class SSPictureFrame(pictureframe.PictureFrame):
 
-    def __init__(self, address, lead_tracks=[], drum_tracks=[]):
-        self.lead_tracks = list(lead_tracks)
-        self.drum_tracks = list(drum_tracks)
+    def __init__(self, address, leads=[], drums=[]):
+        self.leads = list(leads)
+        self.drums = list(drums)
         super(SSPictureFrame, self).__init__(address)
 
     def pattern_hint(self, t, span=0.5):
@@ -14,7 +14,7 @@ class SSPictureFrame(pictureframe.PictureFrame):
 
     @property
     def tracks(self):
-        return self.lead_tracks + self.drum_tracks
+        return self.leads + self.drums
 
 class RedSitsAlone(SSPictureFrame):
     """
@@ -22,7 +22,7 @@ class RedSitsAlone(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.blue = pf.MAX_BLUE #mmath.triangle(t, span, pf.MIN_BLUE, pf.MAX_BLUE)
+        pf.fade_rgb(t, span, 0, 0, 255)
 
 class RedSewsBat(SSPictureFrame):
     """
@@ -112,7 +112,7 @@ class RedIsSad(SSPictureFrame):
     """
     @staticmethod
     def mood(pf, t, span):
-        pf.fade_rgb(t, span, 0, 0, pf.MAX_BLUE / 2.0)
+        pf.fade_rgb(t, span, 0, 0, pf.MAX_BLUE / 2)
 
 class PlanetTapsShoulder(SSPictureFrame):
     """
