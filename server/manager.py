@@ -129,12 +129,14 @@ class MusicalStory(Story):
         super(MusicalStory, self).__init__(storyboard)
 
     def teardown(self):
-        for idx, track in enumerate(self.active_tracks):
+        for idx, track in enumerate(self.looper.tracks):
             self.looper.ensure_stopped(idx)
+        self.active_tracks = []
 
     def cleanup(self):
-        for idx, track in enumerate(self.active_tracks):
+        for idx, track in enumerate(self.looper.tracks):
             self.looper.ensure_stopped(idx)
+        self.active_tracks = []
 
     def play(self, track_name):
         """
