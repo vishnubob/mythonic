@@ -145,7 +145,6 @@ class Looper(object):
     def think(self):
         if not self.push_needed():
             return
-        print "Push tick-time!", self.sequencer.queue_get_tick_time()
         for track in self.tracks:
             if not track.playing:
                 continue
@@ -165,5 +164,5 @@ class Looper(object):
 
     @property
     def next_logical_measure(self):
-        print "NL", math.ceil((self.sequencer.queue_get_tick_time() + self.resolution) / float(self.ticks_per_measure))
+        #print "NL", math.ceil((self.sequencer.queue_get_tick_time() + self.resolution) / float(self.ticks_per_measure))
         return math.ceil(self.sequencer.queue_get_tick_time() / float(self.ticks_per_measure))

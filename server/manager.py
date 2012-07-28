@@ -125,22 +125,31 @@ class MusicalStory(Story):
 
     def __init__(self, storyboard, looper=None):
         self.looper = looper
+        self.active_tracks = []
         super(MusicalStory, self).__init__(storyboard)
 
+    def teardown(self):
+        for track in self.active_tracks:
+            self.stop(track)
+
     def cleanup(self):
-        for idx, track in enumerate(self.looper.tracks):
-            self.looper.ensure_stopped(idx)
+        for track in self.active_tracks:
+            self.stop(track)
 
     def play(self, track_name):
         """
         Ensure the track corresponding to the given track name
-        (as according to self.storyboard.track_listing) is playing
+        as according to self.storyboard.track_listing) is playing
         """
+        self.active_tracks.append(track_name)
         self.looper.ensure_playing(self.storyboard.track_listing[track_name])
+        print "Now playng:", self.active_tracks
 
     def stop(self, track_name):
         """
         Ensure the track corresponding to the given track name
         (as according to self.storyboard.track_listing) is stopped
         """
+        self.active_tracks.remove(track_name)
         self.looper.ensure_stopped(self.storyboard.track_listing[track_name])
+        print "Now playng:", self.active_tracks
