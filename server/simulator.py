@@ -19,7 +19,7 @@ BOX_HEIGHT = 50
 BOX_WIDTH = 100
 
 def main():
-    midi_client = 14
+    midi_client = 20
     midi_port = 0
     port = serial.Serial(None, baudrate=1000000, bytesize=8, parity='N', stopbits=1, timeout=None, xonxoff=False, rtscts=False, dsrdtr=False)
     looper = make_looper(server.MIDI_TRACKS, midi_client, midi_port)
@@ -101,7 +101,7 @@ class TestStory(manager.Story):
             work_left |= pf.fade_rgb(t, 5, 255, 255, 128)
         return work_left
 
-    def teardown(self, t):
+    def conclude(self, t):
         work_left = False
         for pf in self.storyboard:
             work_left |= pf.fadeout(t, 5)

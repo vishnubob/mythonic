@@ -65,7 +65,7 @@ class Story(object):
 
     def __init__(self, storyboard):
         self.storyboard = storyboard
-        self.stages = [self.setup, self.plot, self.teardown]
+        self.stages = [self.setup, self.plot, self.conclude]
         self.reset()
 
     def reset(self):
@@ -116,9 +116,9 @@ class Story(object):
         Return True if plot is ongoing
         """
 
-    def teardown(self, t):
+    def conclude(self, t):
         """
-        Just like setup and plot, but happens after
+        Just like begin and plot, but happens after
         """
 
 class MusicalStory(Story):
