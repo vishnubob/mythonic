@@ -24,7 +24,7 @@ def save_track(track, filename, channel):
         if isinstance(event, midi.NoteEvent):
             new_event = event.copy()
             out[0].append(new_event)
-        else:
+        elif not isinstance(event, midi.EndOfTrackEvent):
             out[0].append(event)
 
     out.make_ticks_rel()
@@ -48,7 +48,7 @@ def handle_drum_track(track, prefix, channel):
     for event in track:
         if isinstance(event, midi.NoteEvent):
             drumhash[event.pitch][0].append(event.copy())
-        else:
+        elif not isinstance(event, midi.EndOfTrackEvent):
             for key in drumhash:
                 drumhash[key][0].append(eval(repr(event)))
 
@@ -79,3 +79,4 @@ for track in mf:
                 save_track(track, filename, 6)
             elif name == "Lead 3":
                 save_track(track, filename, 7)
+            break
