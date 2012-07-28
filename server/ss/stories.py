@@ -5,22 +5,23 @@ import time
 
 from ss.pictureframes import *
 
+SCREENSAVER_TIMEOUT = 60 * 3
+SCREENSAVER_SPAN = 5
+SCREENSAVER_LOOPS = 2
+NARATIVE_SPAN = 10
+
 class SSManager(manager.StoryManager):
     """
     Manages which stories get activated next
     """
-    SCREENSAVER_TIMEOUT = 3#60 * 3
-    SCREENSAVER_SPAN = 5
-
 
     def __init__(self, hc, storyboard, looper=None):
-        self.screensaver = Screensaver(storyboard, span=self.SCREENSAVER_SPAN)
+        self.screensaver = Screensaver(storyboard, span=SCREENSAVER_SPAN)
         self.instrument = Instrument(storyboard, looper)
-        time_per_frame = 5
         self.naratives = [
-            BatAdventure(storyboard, looper, time_per_frame),
-            TreeArt(storyboard, looper, time_per_frame),
-            FriendshipPlanet(storyboard, looper, time_per_frame)
+            BatAdventure(storyboard, looper, NARATIVE_SPAN),
+            TreeArt(storyboard, looper, NARATIVE_SPAN),
+            FriendshipPlanet(storyboard, looper, NARATIVE_SPAN)
         ]
         for narative in self.naratives:
             activators = [pf for idx, pf in enumerate(narative.foci) if idx % 2 != 0]
@@ -33,7 +34,7 @@ class SSManager(manager.StoryManager):
             return self.instrument
         if isinstance(current, Instrument):
             untouched_since = max(current.stage_started_at, self.storyboard.untouched_since)
-            if time.time() - untouched_since >= self.SCREENSAVER_TIMEOUT:
+            if time.time() - untouched_since >= SCREENSAVER_TIMEOUT:
                return self.screensaver
             if self.storyboard.pattern_complete:
                return self.storyboard.target_pattern.triggered_story
@@ -41,7 +42,7 @@ class SSManager(manager.StoryManager):
         if isinstance(current, Screensaver):
             if self.storyboard.touched:
                 return self.instrument
-            if current.finished and current.looped_count >= 2:
+            if current.finished and current.looped_count >= SCREENSAVER_LOOPS:
                 return self.naratives[int(random.random() * len(self.naratives))]
             return self.screensaver
         if not current.finished:
@@ -96,17 +97,20 @@ class Instrument(manager.MusicalStory):
 
 class Narative(manager.MusicalStory):
 
-    def __init__(self, storyboard, looper, foci, time_per_frame=10):
+    def __init__(self, storyboard, looper, foci, span):
         self.foci = foci
-        self.time_per_frame = time_per_frame
+        self.span = span
         self.last_focus = None
         super(Narative, self).__init__(storyboard, looper)
+
+    @property
+    def time_per_frame(self):
+        return int(self.span/float(len(self.foci)))
 
     def plot(self, t):
         if len(self.foci) == 0:
             return False
-        story_length = len(self.foci) * self.time_per_frame
-        focus_idx = int(mmath.travel(t, story_length, 0, len(self.foci)))
+        focus_idx = int(mmath.travel(t, self.span, 0, len(self.foci)))
         if focus_idx >= len(self.foci):
             return False
         focus = self.foci[focus_idx]
@@ -118,12 +122,12 @@ class Narative(manager.MusicalStory):
             pf.blackout()
             focus.mood(pf, t, self.time_per_frame)
         focus.blackout()
-        focus.white = focus.MAX_WHITE
+        focus.white = focus.MAX_WHITE / 3
         return True
 
 class TreeArt(Narative):
 
-    def __init__(self, storyboard, looper, time_per_frame=10):
+    def __init__(self, storyboard, looper, span):
         foci_classes = [
             RedSitsAlone,
             RedSewsBat,
@@ -135,11 +139,11 @@ class TreeArt(Narative):
         foci = []
         for fc in foci_classes:
             foci += [pf for pf in storyboard if isinstance(pf, fc)]
-        super(TreeArt, self).__init__(storyboard, looper, foci, time_per_frame)
+        super(TreeArt, self).__init__(storyboard, looper, foci, span)
 
 class FriendshipPlanet(Narative):
 
-    def __init__(self, storyboard, looper, time_per_frame=10):
+    def __init__(self, storyboard, looper, span):
         foci_classes = [
             RedSitsAlone,
             RedSewsBat,
@@ -152,7 +156,7 @@ class FriendshipPlanet(Narative):
         foci = []
         for fc in foci_classes:
             foci += [pf for pf in storyboard if isinstance(pf, fc)]
-        super(FriendshipPlanet, self).__init__(storyboard, looper, foci, time_per_frame)
+        super(FriendshipPlanet, self).__init__(storyboard, looper, foci, span)
 
     def setup(self, t):
         drums = ["drums_1_37", "drums_1_38", "drums_1_41", "drums_1_42", "drums_1_43"]
@@ -162,7 +166,7 @@ class FriendshipPlanet(Narative):
 
 class BatAdventure(Narative):
 
-    def __init__(self, storyboard, looper, time_per_frame=10):
+    def __init__(self, storyboard, looper, span=10):
         foci_classes = [
             RedSitsAlone,
             RedSewsBat,
@@ -175,7 +179,7 @@ class BatAdventure(Narative):
         foci = []
         for fc in foci_classes:
             foci += [pf for pf in storyboard if isinstance(pf, fc)]
-        super(BatAdventure, self).__init__(storyboard, looper, foci, time_per_frame)
+        super(BatAdventure, self).__init__(storyboard, looper, foci, span)
 
 
 class Screensaver(manager.Story):
