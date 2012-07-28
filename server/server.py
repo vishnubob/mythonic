@@ -27,19 +27,19 @@ ROUTING = {
 }
 
 PICTURE_FRAMES = [
-    RedSitsAlone(1, tracks=["drums_3_36"]),
-    RedSewsBat(2, tracks=["lead_1"]),
-    RedFinishesBat(3, tracks=["drums_3_37"]),
-    RedHugsBat(4, tracks=["drums_3_38"]),
-    RedPlaysWithBat(5, tracks=["pad"]),
-    RedHangsBat(6, tracks=["drums_3_39"]),
-    BatFliesAway(10, tracks=["bass"]),
-    BatTakesOff(9, tracks=["lead_2"]),
-    BatEatsStars(8, tracks=["drums_3_40"]),
-    BatTripsBalls(7, tracks=["drums_3_41"]),
-    RedIsSad(11, tracks=["lead_3"]),
-    PlanetTapsShoulder(12, tracks=["drums_3_46"]),
-    PlanetHangout(13, tracks=["drums_3_49"])
+    RedSitsAlone(1),
+    RedSewsBat(2),
+    RedFinishesBat(3),
+    RedHugsBat(4),
+    RedPlaysWithBat(5),
+    RedHangsBat(6),
+    BatFliesAway(10),
+    BatTakesOff(9),
+    BatEatsStars(8),
+    BatTripsBalls(7),
+    RedIsSad(11),
+    PlanetTapsShoulder(12),
+    PlanetHangout(13)
 ]
 
 def main():

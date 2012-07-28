@@ -55,6 +55,8 @@ class Instrument(manager.MusicalStory):
     def setup(self, t):
         # list of track names, duplicates
         self.now_playing = []
+        self.trippy = False
+        self.friendly = False
         for pf in self.storyboard:
             pf.blackout()
             pf.deactivate()
@@ -70,25 +72,61 @@ class Instrument(manager.MusicalStory):
                 self.handle_touch(pf)
             if pf.active:
                 pf.cycle_hue(t, 20, 1, 0.5)
-                pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
+                pf.uv = int(mmath.sin_abs(t / 2, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
                     pf.pattern_hint(t)
             elif not self.storyboard.active_frames:
                 pf.white = pf.MAX_WHITE / 3
+            else:
+                if self.trippy:
+                    pf.uv = pf.MAX_UV
+                if self.friendly:
+                    pf.red = int(mmath.sin_abs(t / 2, True) * pf.MAX_RED/2.0)
         return True
+
+    def lookup_tracks(self, pf):
+        tracks_per_class = {
+            RedSitsAlone: [["drums_3_36"]],
+            RedSewsBat: [["lead_1"]],
+            RedFinishesBat: [["drums_3_37"]],
+            RedHugsBat: [["drums_3_38"]],
+            RedPlaysWithBat: [["pad"]],
+            RedHangsBat: [["drums_3_39"]],
+            BatFliesAway: [["bass"]],
+            BatTakesOff: [["lead_2"]],
+            BatEatsStars: [["drums_3_40"]],
+            BatTripsBalls: [[]],
+            RedIsSad: [["lead_3"]],
+            PlanetTapsShoulder: [["drums_3_41"]],
+            PlanetHangout: [[]]
+        }
+        song_idx = 0
+        tracks = []
+        for c in tracks_per_class:
+            if isinstance(pf, c):
+                tracks += tracks_per_class[c][song_idx]
+        return tracks
 
     def handle_touch(self, pf):
         if pf.active:
-            self.now_playing += pf.tracks
-            for track in pf.tracks:
+            tracks = self.lookup_tracks(pf)
+            self.now_playing += tracks
+            for track in tracks:
                 self.play(track)
-            print "Now playing:", self.now_playing
+            if isinstance(pf, BatTripsBalls):
+                self.trippy = True
+            if isinstance(pf, PlanetHangout):
+                self.friendly = True
         else:
-            for track in pf.tracks:
-                self.now_playing.remove(track)
+            for track in self.lookup_tracks(pf):
+                if track in self.now_playing:
+                    self.now_playing.remove(track)
                 if track not in self.now_playing:
                     self.stop(track)
-            print "Now playing:", self.now_playing
+            if isinstance(pf, BatTripsBalls):
+                self.trippy = False
+            if isinstance(pf, PlanetHangout):
+                self.friendly = False 
 
 class Narative(manager.MusicalStory):
 

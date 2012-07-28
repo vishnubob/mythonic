@@ -123,6 +123,7 @@ class PictureFrame(object):
         return self.human_address - 1
 
     def touch(self):
+        print "TOUCH", self.human_address, self.__class__.__name__
         self.touch_history.append(time.time())
         if self.active:
             self.deactivate()
