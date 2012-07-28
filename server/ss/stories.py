@@ -157,11 +157,11 @@ class Instrument(manager.MusicalStory):
             if pf.touched:
                 self.handle_touch(pf)
             if pf.active:
-                pf.cycle_hue(t, 5, 1, 0.5)
+                pf.cycle_hue(t, 20, 1, 0.5)
                 pf.uv = int(mmath.sin_abs(t / 3, True) * pf.MAX_UV)
                 if self.storyboard.in_target_pattern(pf):
                     pf.pattern_hint(t)
-            else:
+            elif not self.storyboard.activated:
                 pf.white = pf.MAX_WHITE / 3
         return True
 
