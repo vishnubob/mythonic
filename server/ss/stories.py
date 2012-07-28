@@ -103,6 +103,16 @@ class Narative(manager.MusicalStory):
         self.last_focus = None
         super(Narative, self).__init__(storyboard, looper)
 
+    def setup(self, t):
+        for track in self.soundtrack:
+            self.play(track)
+
+    @property
+    def soundtrack(self):
+        """
+        The names of the tracks to play during the narative
+        """
+
     @property
     def time_per_frame(self):
         return int(self.span/float(len(self.foci)))
@@ -141,6 +151,12 @@ class TreeArt(Narative):
             foci += [pf for pf in storyboard if isinstance(pf, fc)]
         super(TreeArt, self).__init__(storyboard, looper, foci, span)
 
+    @property
+    def soundtrack(self):
+       drums = ["drums_3_36", "drums_3_37", "drums_3_38", "drums_3_39", "drums_3_40", "drums_3_41", "drums_3_42", "drums_3_46", "drums_3_49"]
+       lead = ["lead_3"]
+       return drums + lead
+
 class FriendshipPlanet(Narative):
 
     def __init__(self, storyboard, looper, span):
@@ -158,15 +174,15 @@ class FriendshipPlanet(Narative):
             foci += [pf for pf in storyboard if isinstance(pf, fc)]
         super(FriendshipPlanet, self).__init__(storyboard, looper, foci, span)
 
-    def setup(self, t):
-        drums = ["drums_1_37", "drums_1_38", "drums_1_41", "drums_1_42", "drums_1_43"]
-        lead = ["lead_1"]
-        for track in drums + lead:
-            self.play(track)
+    @property
+    def soundtrack(self):
+       drums = ["drums_1_37", "drums_1_38", "drums_1_41", "drums_1_42", "drums_1_43"]
+       lead = ["lead_1"]
+       return drums + lead
 
 class BatAdventure(Narative):
 
-    def __init__(self, storyboard, looper, span=10):
+    def __init__(self, storyboard, looper, span):
         foci_classes = [
             RedSitsAlone,
             RedSewsBat,
@@ -181,6 +197,11 @@ class BatAdventure(Narative):
             foci += [pf for pf in storyboard if isinstance(pf, fc)]
         super(BatAdventure, self).__init__(storyboard, looper, foci, span)
 
+    @property
+    def soundtrack(self):
+       drums = ["drums_2_36", "drums_2_38", "drums_2_40", "drums_2_41", "drums_2_42", "drums_2_46", "drums_2_48"]
+       lead = ["lead_2"]
+       return drums + lead
 
 class Screensaver(manager.Story):
 
