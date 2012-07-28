@@ -6,6 +6,8 @@ def travel(t, span, start=0, end=1):
     return min(unbound, end) if end > start else max(unbound, end)
 
 def segment(t, span, start=0, end=1):
+    if end == start:
+        return end
     increment = (end - start) / float(span)
     return ((t * increment - start) % (end - start)) + start
 

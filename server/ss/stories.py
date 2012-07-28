@@ -5,10 +5,10 @@ import time
 
 from ss.pictureframes import *
 
-SCREENSAVER_TIMEOUT = 60 * 3
-SCREENSAVER_SPAN = 5
-SCREENSAVER_LOOPS = 2
-NARATIVE_SPAN = 10
+SCREENSAVER_TIMEOUT = 3 #3 * 60
+SCREENSAVER_SPAN = 30
+SCREENSAVER_LOOPS = int((2 * 60) / SCREENSAVER_SPAN)
+NARATIVE_SPAN = 2 * 60
 
 class SSManager(manager.StoryManager):
     """
@@ -100,10 +100,13 @@ class Narative(manager.MusicalStory):
     def __init__(self, storyboard, looper, foci, span):
         self.foci = foci
         self.span = span
-        self.last_focus = None
         super(Narative, self).__init__(storyboard, looper)
 
     def setup(self, t):
+        self.last_focus = None
+        self.last_change = None
+        for pf in self.storyboard:
+            pf.uv = pf.MIN_UV
         for track in self.soundtrack:
             self.play(track)
 
@@ -118,21 +121,28 @@ class Narative(manager.MusicalStory):
         return int(self.span/float(len(self.foci)))
 
     def plot(self, t):
+        if self.last_change is None:
+            self.last_change = t
         if len(self.foci) == 0:
             return False
         focus_idx = int(mmath.travel(t, self.span, 0, len(self.foci)))
         if focus_idx >= len(self.foci):
             return False
         focus = self.foci[focus_idx]
-        if self.last_focus != focus:
-            self.last_focus = focus
-        for pf in self.storyboard:
-            if pf == focus:
-                continue
-            pf.blackout()
-            focus.mood(pf, t, self.time_per_frame)
+        if self.last_focus is not focus and self.last_focus is not None:
+            # Change last focuses RGB so it transitions in unform with others
+            for pf in self.storyboard:
+                if pf is not self.last_focus:
+                    self.last_focus.rgb = pf.rgb
+            self.last_change = t
+        self.last_focus = focus
         focus.blackout()
         focus.white = focus.MAX_WHITE / 3
+        for pf in self.storyboard:
+            if pf is focus:
+                continue
+            pf.white = pf.MIN_WHITE
+            focus.mood(pf, t - self.last_change, self.time_per_frame)
         return True
 
 class TreeArt(Narative):
@@ -210,53 +220,21 @@ class Screensaver(manager.Story):
         super(Screensaver, self).__init__(storyboard)
 
     def setup(self, t):
-        self.pattern_idx = 0
-        self.foci = list(self.storyboard)
-        random.shuffle(self.foci)
-
-    @property
-    def pattern_span(self):
-        return float(self.span) / len(self.storyboard.patterns)
-
-    @property
-    def focus_span(self):
-        return self.pattern_span
-
-    def current_focus(self, t):
-        return self.foci[int(t/self.focus_span)]
-
-    def hinted_pattern(self, t):
-        """
-        Returns the next pattern to hint at.
-        When finished, returns None
-        """
-        patterns = self.storyboard.patterns
-        if len(patterns) == 0:
-            return None
-        idx = int(t / self.pattern_span)
-        if idx >= len(patterns):
-            return None
-        if self.pattern_idx != idx:
-            for pf in patterns[self.pattern_idx]:
-                pf.blackout()
-            self.pattern_idx = idx
-        return patterns[self.pattern_idx]
+        self.hinted_pattern = random.choice(self.storyboard.patterns)
+        self.focus = random.choice(self.storyboard)
 
     def plot(self, t):
-        pattern = self.hinted_pattern(t)
-        if pattern is None:
-            return False
-        focus = self.current_focus(t)
+        self.focus.blackout()
+        self.focus.white = self.focus.MAX_WHITE / 3
         for pf in self.storyboard:
-            if pf is focus:
-                focus.blackout()
-                focus.white = focus.MAX_WHITE / 3
-            else:
-                pf.uv = pf.MIN_UV
-                pf.white = pf.MIN_WHITE
-                focus.mood(pf, t, self.focus_span)
-        hinted_frame_idx = int(t/(self.pattern_span/float(len(pattern)))) % len(pattern)
+            if pf is self.focus:
+                continue
+            pf.uv = pf.MIN_UV
+            pf.white = pf.MIN_WHITE
+            self.focus.mood(pf, t, self.span)
+        pattern = self.hinted_pattern
+        hinted_frame_idx = int(t/(self.span/float(len(pattern)))) % len(pattern)
         if hinted_frame_idx < len(pattern):
             hinted_frame = pattern[hinted_frame_idx]
             hinted_frame.uv = hinted_frame.MAX_UV
-        return True
+        return t <= self.span
