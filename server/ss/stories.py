@@ -90,11 +90,6 @@ class Instrument(manager.MusicalStory):
                     self.stop(track)
             print "Now playing:", self.now_playing
 
-    def teardown(self):
-        for idx, track in enumerate(self.looper.tracks):
-            self.stop(idx)
-        return super(Instrument, self).teardown()
-
 class Narative(manager.MusicalStory):
 
     def __init__(self, storyboard, looper, foci, span):

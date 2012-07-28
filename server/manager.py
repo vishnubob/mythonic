@@ -39,6 +39,8 @@ class StoryManager(biscuit.Manager):
         next_story = self.select_story()
         if next_story != self.current_story:
             next_story.reset()
+            if self.current_story is not None:
+                self.current_story.cleanup()
             self.current_story = next_story
             print "Story changed to", str(next_story.__class__.__name__)
         # Advance the story
@@ -71,6 +73,12 @@ class Story(object):
         self.stage_started_at = None
         self.looped_count = 0
         self.new_stage = True
+
+    def cleanup(self):
+        """
+        Cleanup state after running for some amount of time.
+        Called when another story has taken this one's place
+        """
 
     def think(self):
         """
@@ -119,7 +127,7 @@ class MusicalStory(Story):
         self.looper = looper
         super(MusicalStory, self).__init__(storyboard)
 
-    def teardown(self, t):
+    def cleanup(self):
         for idx, track in enumerate(self.looper.tracks):
             self.looper.ensure_stopped(idx)
 
