@@ -5,7 +5,7 @@ import time
 
 from ss.pictureframes import *
 
-SCREENSAVER_TIMEOUT = 3 #3 * 60
+SCREENSAVER_TIMEOUT = 3 * 60
 SCREENSAVER_SPAN = 30
 SCREENSAVER_LOOPS = int((2 * 60) / SCREENSAVER_SPAN)
 NARATIVE_SPAN = 2 * 60
